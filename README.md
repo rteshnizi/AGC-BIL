@@ -1,6 +1,10 @@
-# sa_moving_sensor
+# SA multi-Target Tracking Level and Behavior Inference Level
 
 This repository integrates multi target tracking algorithm with graphic inference of trajectories to build the situational awareness.
+
+## The Log of our Sessions
+
+[Link](wiki/SessionsLogs.md)
 
 ## Structure
 
@@ -10,13 +14,13 @@ Observation -> MTT -> estimated trajectories -> Inference -> ?
 
 ## Inputs
 
-1. The input format to MTT is a list of positions, such as 
+1. The input format to MTT is a list of positions, such as
 
 `z_k = [[x1, y1], [x2, y2], ...]`
 
 2. The input format to Inference is a
 
-## Outputs 
+## Outputs
 
 1. The output format from MTT is a list of estimated trajectories, i.e.
 
