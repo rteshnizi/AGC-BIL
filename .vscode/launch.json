@@ -1,0 +1,44 @@
+{
+	"configurations": [
+		{
+			"name": "Run Main",
+			"type": "python",
+			"request": "launch",
+			"console": "integratedTerminal",
+			"windows": {
+				"program": "${workspaceFolder}\\main.py"
+			},
+			"linux": {
+				"program": "${workspaceFolder}/main.py"
+			},
+		},
+		{
+			"name": "Run TTL",
+			"type": "python",
+			"request": "launch",
+			"console": "integratedTerminal",
+			"windows": {
+				"program": "${workspaceFolder}\\main.py",
+				"args": ["ttl"]
+			},
+			"linux": {
+				"program": "${workspaceFolder}/main.py",
+				"args": ["ttl"]
+			},
+		},
+		{
+			"name": "Run BIL",
+			"type": "python",
+			"request": "launch",
+			"console": "integratedTerminal",
+			"windows": {
+				"program": "${workspaceFolder}\\main.py",
+				"args": ["bil"]
+			},
+			"linux": {
+				"program": "${workspaceFolder}/main.py",
+				"args": ["bil"]
+			},
+		}
+	]
+}
