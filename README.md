@@ -6,6 +6,15 @@ This repository integrates multi target tracking algorithm with graphic inferenc
 
 [Link](wiki/SessionsLogs.md)
 
+## Dependencies
+
+### BIL
+
+1. Python 3 (on Ubuntu you might have to use `pip3` instead in the following commands)
+2. Shapely: `pip install shapely`
+3. NetworkX: `pip install networkx`
+4. PyPlot: `pip install matplotlib`
+
 ## Mock Data
 
 The data under [Mock](data/Mock/) contains the below JSON files.
