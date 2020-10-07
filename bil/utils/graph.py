@@ -4,7 +4,7 @@ import time
 from mpl_toolkits.mplot3d import Axes3D
 from math import nan, isnan
 from queue import Queue
-from typing import List
+from typing import List, Tuple
 
 class GraphAlgorithms:
 	_allFigs = set()
@@ -46,8 +46,17 @@ class GraphAlgorithms:
 		return leaves
 
 	@staticmethod
+	def getBeamName(passingLane, notPassingLane):
+		return "%s¦|%s" % (passingLane, notPassingLane)
+
+	@staticmethod
 	def isBeamNode(n: str) -> bool:
 		return "¦|" in n
+
+	@staticmethod
+	def getBeamEnds(n: str) -> Tuple[str, str]:
+		parts = n.split("¦|")
+		return (parts[0], parts[1])
 
 	@staticmethod
 	def cloneNodeProps(frm: dict, to: dict) -> bool:

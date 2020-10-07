@@ -1,7 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 from shapely.geometry import LineString, Point, Polygon
-from typing import List, Set
+from typing import List, Set, Dict
 
 from bil.model.story import Story
 from bil.model.polygonalRegion import PolygonalRegion
@@ -23,19 +23,21 @@ class ConnectivityGraph(nx.DiGraph):
 		self._buildFromMap(map, fov)
 		self._fig = None
 		self._condensed = None
-		self.nodeClusters: List[Set[str]] = []
-		self.nodeToClusterMap = {}
+		self.nodeClusters: Dict[str, Set[str]] = {}
+		self.nodeToClusterMap: Dict[str, str] = {}
 
 	@property
 	def condensed(self):
 		if self._condensed is not None: return self._condensed
 		print("Condensing %s" % self.timestamp)
+		self.nodeClusters: Dict[str, Set[str]] = {}
+		self.nodeToClusterMap: Dict[str, str] = {}
 		self._condensed = self._condense()
 		return self._condensed
 
 	def _addBeamNodes(self, rOut, rIn):
-		out2in = self._getBeamName(rOut, rIn)
-		in2out = self._getBeamName(rIn, rOut)
+		out2in = GraphAlgorithms.getBeamName(rOut, rIn)
+		in2out = GraphAlgorithms.getBeamName(rIn, rOut)
 		self._addBeam(out2in)
 		self._addBeam(in2out)
 		self.add_edge(rOut, out2in)
@@ -58,9 +60,6 @@ class ConnectivityGraph(nx.DiGraph):
 	def _addBeam(self, name):
 		self._addNode(name)
 		self._beamNodes.append(name)
-
-	def _getBeamName(self, passingLane, notPassingLane):
-		return "%s¦|%s" % (passingLane, notPassingLane)
 
 	def _getMapRegion(self, name, map):
 		return map.regions.get(name.split("-")[0], None)
@@ -112,28 +111,35 @@ class ConnectivityGraph(nx.DiGraph):
 			(dx, dy) = Geometry.getDirectionXyFromLineSeg(l)
 			pt = Geometry.pushPointEpsilon(dx, dy, pt)
 			if Geometry.isPointInsidePolygon(pt, p.polygon):
-				return self._getBeamName(other.name, p.name)
-			return self._getBeamName(p.name, other.name)
+				return GraphAlgorithms.getBeamName(other.name, p.name)
+			return GraphAlgorithms.getBeamName(p.name, other.name)
 		raise RuntimeError("This shouldn't ever happen")
 
-	def _addCluster(self, node, nodeClusters, nodeToClusterMap):
-		ind = len(nodeClusters)
-		nodeClusters.append({ node })
-		nodeToClusterMap[node] = ind
+	def _addCluster(self, node):
+		self.nodeClusters[node] = { node }
+		self.nodeToClusterMap[node] = node
+
+	def _condenseBeam(self, beam):
+		(start, end) = GraphAlgorithms.getBeamEnds(beam)
+		if start in self.nodeToClusterMap:
+			start = self.nodeToClusterMap[start]
+		if end in self.nodeToClusterMap:
+			end = self.nodeToClusterMap[end]
+		return GraphAlgorithms.getBeamName(start, end)
 
 	def _condense(self) -> nx.DiGraph:
 		for n1 in self.nodes:
 			if n1 in self.nodeToClusterMap: continue
 			if GraphAlgorithms.isBeamNode(n1):
-				self._addCluster(n1, self.nodeClusters, self.nodeToClusterMap)
+				self._addCluster(n1)
 				continue
-			if len(self.nodeClusters) == 0: self._addCluster(n1, self.nodeClusters, self.nodeToClusterMap)
+			if n1 not in self.nodeToClusterMap: self._addCluster(n1)
 
 			for n2 in self.nodes:
 				if n2 in self.nodeToClusterMap: continue
 				if n1 == n2: continue
 				if GraphAlgorithms.isBeamNode(n2):
-					self._addCluster(n2, self.nodeClusters, self.nodeToClusterMap)
+					self._addCluster(n2)
 					continue
 				# FIXME: This should happen in one DFS not n^2
 				if GraphAlgorithms.isConnectedBfs(self, n1, n2):
@@ -144,27 +150,27 @@ class ConnectivityGraph(nx.DiGraph):
 						self.nodeClusters[self.nodeToClusterMap[n2]].add(n1)
 						self.nodeToClusterMap[n1] = self.nodeToClusterMap[n2]
 					else:
-						self._addCluster(n1, self.nodeClusters, self.nodeToClusterMap)
+						self._addCluster(n1)
 						self.nodeClusters[self.nodeToClusterMap[n1]].add(n2)
 						self.nodeToClusterMap[n2] = self.nodeToClusterMap[n1]
-			if n1 not in self.nodeToClusterMap:
-				ind = len(self.nodeClusters)
-				self.nodeClusters.append({ n1 })
-				self.nodeToClusterMap[n1] = ind
 
 		# We found the nodes
 		# Now add edges by looking at the original graph
 		condensedGraph = nx.DiGraph()
 		condensedGraph.timestamp = self.timestamp
-		nodeClusterList = [list(cluster)[0] for cluster in self.nodeClusters]
-		for n in nodeClusterList:
-			condensedGraph.add_node(n)
-			GraphAlgorithms.cloneNodeProps(self.nodes[n], condensedGraph.nodes[n])
+		for n in self.nodeClusters:
+			newNodeName = self._condenseBeam(n) if GraphAlgorithms.isBeamNode(n) else n
+			condensedGraph.add_node(newNodeName)
+			GraphAlgorithms.cloneNodeProps(self.nodes[n], condensedGraph.nodes[newNodeName])
 		for n1 in self.nodes:
 			for n2 in self.adj[n1]:
-				n1ClusterInd = self.nodeToClusterMap[n1]
-				n2ClusterInd = self.nodeToClusterMap[n2]
-				condensedGraph.add_edge(nodeClusterList[n1ClusterInd], nodeClusterList[n2ClusterInd])
+				n1Cluster = self.nodeToClusterMap[n1]
+				n2Cluster = self.nodeToClusterMap[n2]
+				if GraphAlgorithms.isBeamNode(n1Cluster):
+					n1Cluster = self._condenseBeam(n1Cluster)
+				if GraphAlgorithms.isBeamNode(n2Cluster):
+					n2Cluster = self._condenseBeam(n2Cluster)
+				condensedGraph.add_edge(n1Cluster, n2Cluster)
 		print(len(self.nodes))
 		print(len(condensedGraph.nodes))
 		return condensedGraph

@@ -30,8 +30,8 @@ class App(tk.Frame):
 		self.fovLabel.set(self._fovLabel)
 		self._dbg = {
 			'Print Mouse': tk.IntVar(master=self.master, value=0),
-			'Display Geom Graph': tk.IntVar(master=self.master, value=1),
-			'Display Spring Graph': tk.IntVar(master=self.master, value=0),
+			'Display Geom Graph': tk.IntVar(master=self.master, value=0),
+			'Display Spring Graph': tk.IntVar(master=self.master, value=1),
 			'Show FOV': tk.IntVar(master=self.master, value=0),
 		}
 		self.createButtons()
