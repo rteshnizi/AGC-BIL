@@ -15,7 +15,7 @@ def main(module=None):
 		ttl = Ttl(bil=None)
 		ttl.run()
 	else:
-		raise RuntimeError("Wrong Module: %s" % module)
+		raise RuntimeError("Unknown Module name: %s. Expected bil or ttl" % module)
 
 if __name__ == '__main__':
 	module = None
