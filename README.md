@@ -15,6 +15,10 @@ This repository integrates multi target tracking algorithm with graphic inferenc
 3. NetworkX: `pip install networkx`
 4. PyPlot: `pip install matplotlib`
 
+### TTL
+
+1. Scipy: `pip install scipy`
+
 ## Mock Data
 
 The data under [Mock](data/Mock/) contains the below JSON files.
