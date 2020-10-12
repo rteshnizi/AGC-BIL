@@ -160,7 +160,9 @@ class ConnectivityGraph(nx.DiGraph):
 		condensedGraph.timestamp = self.timestamp
 		for n in self.nodeClusters:
 			newNodeName = self._condenseBeam(n) if GraphAlgorithms.isBeamNode(n) else n
+			self.nodeToClusterMap[newNodeName] = n
 			condensedGraph.add_node(newNodeName)
+			condensedGraph.nodes[newNodeName]["mappedName"] = n
 			GraphAlgorithms.cloneNodeProps(self.nodes[n], condensedGraph.nodes[newNodeName])
 		for n1 in self.nodes:
 			for n2 in self.adj[n1]:

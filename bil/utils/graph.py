@@ -198,9 +198,10 @@ class GraphAlgorithms:
 			for n in g.condensed.nodes:
 				newNode = GraphAlgorithms._getTimedNodeName(n, g.timestamp)
 				chained.add_node(newNode)
+				n = n if n in g.nodes else g.condensed.nodes[n]["mappedName"]
 				GraphAlgorithms.cloneNodeProps(g.nodes[n], chained.nodes[newNode])
 				chained.nodes[newNode]["polygonName"] = n # This is lazy way to obtain the name of the polygon without doing string split etc.
-				chained.nodes[newNode]["cluster"] = g.nodeClusters[g.nodeToClusterMap[n]] # This is lazy way to obtain the name of the polygon without doing string split etc.
+				chained.nodes[newNode]["cluster"] = g.nodeClusters[g.nodeToClusterMap[n]]
 				nodeLayers[layerIndex].append(newNode)
 			for e in g.condensed.edges:
 				chained.add_edge(GraphAlgorithms._getTimedNodeName(e[0], g.timestamp), GraphAlgorithms._getTimedNodeName(e[1], g.timestamp))

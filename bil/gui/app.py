@@ -29,10 +29,10 @@ class App(tk.Frame):
 		self._fovIndex = 0
 		self.fovLabel.set(self._fovLabel)
 		self._dbg = {
-			'Print Mouse': tk.IntVar(master=self.master, value=0),
-			'Display Geom Graph': tk.IntVar(master=self.master, value=0),
-			'Display Spring Graph': tk.IntVar(master=self.master, value=1),
-			'Show FOV': tk.IntVar(master=self.master, value=0),
+			"Print Mouse": tk.IntVar(master=self.master, value=0),
+			"Display Geom Graph": tk.IntVar(master=self.master, value=0),
+			"Display Spring Graph": tk.IntVar(master=self.master, value=1),
+			"Show FOV": tk.IntVar(master=self.master, value=0),
 		}
 		self.createButtons()
 		self.createDebugOptions()
@@ -66,19 +66,19 @@ class App(tk.Frame):
 
 	@property
 	def shouldPrintMouse(self) -> bool:
-		return self._dbg['Print Mouse'].get() == 1
+		return self._dbg["Print Mouse"].get() == 1
 
 	@property
 	def shouldShowFOV(self) -> bool:
-		return self._dbg['Show FOV'].get() == 1
+		return self._dbg["Show FOV"].get() == 1
 
 	@property
 	def displayGeomGraph(self) -> bool:
-		return self._dbg['Display Geom Graph'].get() == 1
+		return self._dbg["Display Geom Graph"].get() == 1
 
 	@property
 	def displaySpringGraph(self) -> bool:
-		return self._dbg['Display Spring Graph'].get() == 1
+		return self._dbg["Display Spring Graph"].get() == 1
 
 	def showGraph(self):
 		self.lastDisplayedGraph = self.scenario.fov.cGraphs[self._fovIndex]

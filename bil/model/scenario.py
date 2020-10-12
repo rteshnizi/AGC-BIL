@@ -10,7 +10,10 @@ from bil.model.featureMap import FeatureMap
 from bil.model.story import Story
 
 class Scenario(object):
-	def __init__(self, featureMap, envMap, obsPath):
+	def __init__(self, featureMap, envMap, obsPath=None):
+		"""
+		if `obsPath == None`, then it is assumed that live updates are going to be added
+		"""
 		self._obsPath = obsPath
 		self._parsedObservation: dict = None
 		# Only AGC team members, does not include observed agents
@@ -26,7 +29,8 @@ class Scenario(object):
 
 	def _build(self):
 		self.fov = FieldOfView(self.map)
-		self._buildObservations()
+		if self._obsPath is not None:
+			self._buildObservations()
 
 	def _buildObservations(self) -> None:
 		with open(self._obsPath, 'r') as jsonFile:
