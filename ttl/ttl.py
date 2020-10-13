@@ -87,7 +87,7 @@ class Ttl(object):
 				theta = centralized_fusor.sensor_para_list[i]["position"][2]
 				agentRecord[i]["Datap"].append(copy.deepcopy([t, x, y, theta]))
 				X, Y = self.RectangleCorners(centralized_fusor.sensor_para_list[i]["position"], centralized_fusor.sensor_para_list[i]["shape"][1])
-				agentRecord[i]["FoV"].append([X, Y])
+				agentRecord[i]["FoV"].append([[X, Y]])
 		
 		output = []
 		for key in agentRecord.keys():
