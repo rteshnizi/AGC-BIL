@@ -1,6 +1,6 @@
 import sys
 
-from bil.bil import Bil
+# from bil.bil import Bil
 from ttl.ttl import Ttl
 
 def main(module=None):
