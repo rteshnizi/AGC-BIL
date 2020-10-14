@@ -5,7 +5,6 @@ import csv, json
 import os, sys
 import numpy as np
 
-
 class Ttl(object):
 	def __init__(self, bil=None):
 		self.bil = bil
@@ -14,12 +13,12 @@ class Ttl(object):
 		filename = os.path.join(path, 'data', 'sim_parameter.json')
 		with open(filename) as json_file:
 			data = json.load(json_file)
-    
+
 		self.sensor_para_list = data["sensors"]
 		self.dt = data["dt"]
-		
+
 		# 2. Sequantial JPDA, centralized way
-		
+
 		self.step_num = data["run_num"]
 
 	def run(self):
@@ -49,17 +48,17 @@ class Ttl(object):
 		centralized_fusor = cenAgent(self.sensor_para_list, self.dt, isObsdyn=isObsDyn, isRotate=isRotate)
 
 		for t in time_set:
-        
+
 			true_k, noise_k = self.generate_obs(t, isFalseAlarm, isMoving)
 			# true_target_set.append(true_k)
 			# noise_set.append(noise_k)
 			z_k = true_k + noise_k
 			# total_z.append(z_k)
-			
+
 			ellips_inputs_k, bb_output_k, obs_points_k = centralized_fusor.obs_update_callback(t, self.dt, z_k)
 			# observation_z.append(obs_points_k)
 			# seq_track_est_k = []
-			
+
 			for track in ellips_inputs_k:
 				x = track.kf.x_k_k[0,0]
 				y = track.kf.x_k_k[1,0]
@@ -70,9 +69,9 @@ class Ttl(object):
 					trackRecord[track.id] = {"Datap": [[t, x, y, 0]], "trackID": track.id}
 				# seq_track_est_k.append([x, y, P])
 
-			
+
 			# seq_track_est.append(seq_track_est_k)
-        
+
 
 			# move sensors
 			if isMoving:
@@ -80,7 +79,7 @@ class Ttl(object):
 				centralized_fusor.dynamics()
 
 			# collect sensors data
-			
+
 			for i in range(centralized_fusor.sensor_num):
 				x = centralized_fusor.sensor_para_list[i]["position"][0]
 				y = centralized_fusor.sensor_para_list[i]["position"][1]
@@ -88,7 +87,7 @@ class Ttl(object):
 				agentRecord[i]["Datap"].append(copy.deepcopy([t, x, y, theta]))
 				X, Y = self.RectangleCorners(centralized_fusor.sensor_para_list[i]["position"], centralized_fusor.sensor_para_list[i]["shape"][1])
 				agentRecord[i]["FoV"].append([[X, Y]])
-		
+
 		output = []
 		for key in agentRecord.keys():
 			output.append(agentRecord[key])
@@ -97,8 +96,7 @@ class Ttl(object):
 		path = os.getcwd()
 		filename = os.path.join(path, "data", "obs.json")
 		with open(filename, 'w') as outfiles:
-			json.dump(output, outfiles, indent=4)
-				
+			json.dump(output, outfiles, indent="\t")
 
 	def RotationMatrix(self, theta):
 		return np.matrix([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
@@ -124,7 +122,7 @@ class Ttl(object):
 		z_k = []
 
 		if not isMoving:
-			
+
 			x = 20 - 40.0 / 50 * t
 			y = 20 - 40.0 / 50 * t
 			z_k.append([x, y])
@@ -170,11 +168,11 @@ class Ttl(object):
 			target = [x, y]
 			# plot_track(target)
 			z_k.append(target)
-		
+
 		# 3. some noises
 		noise_k = []
 		if isFalseAlarm:
 			for i in range(random.randint(1, 5)):
 				ran_point = [40* random.random() -20, 40* random.random()-20]
 				noise_k.append(ran_point)
-		return z_k, noise_k 
+		return z_k, noise_k
