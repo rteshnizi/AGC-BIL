@@ -41,7 +41,7 @@ Reform in `obs.json`
 
 An example: 
 
-`
+```
 obs.json
 
 [
@@ -67,4 +67,6 @@ obs.json
  ...
 
 ]
-`
+
+}
+```
