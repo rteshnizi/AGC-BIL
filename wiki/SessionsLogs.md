@@ -34,3 +34,37 @@ Discussed data structure.
 * Take JSON structure as input.
 ### Tianqi
 * Generate `obs.json` object.
+
+# update in 25/10/2020
+
+Reform in `obs.json`
+
+An example: 
+
+`
+obs.json
+
+[
+
+ {
+
+    "t" = 0.1,
+    "deletedTracks": [],       # track IDs deleted in previous time step
+    "sensors" = [
+        {"ID": 0,
+        "pose": [x, y, theta],
+        "FoV": [[[0, 0, 1, 1], [0, 1, 1, 0]]]}   # X, Y coordinates in 2 lists
+        ...
+    ],    
+    "tracks" = [
+        {"ID": 0,
+        "pose": [x, y, theta],
+        }
+        ...
+    ],
+ }
+ 
+ ...
+
+]
+`

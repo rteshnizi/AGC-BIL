@@ -20,7 +20,7 @@ from scipy.optimize import linear_sum_assignment   # Hungarian alg, minimun bipa
 import copy
 
 class cenAgent:
-    def __init__(self, sensor_para_list, dt, v = 5, P0 = 2, isObsdyn = False, isRotate = False):
+    def __init__(self, sensor_para_list, dt, v = 5, P0 = 2, isObsdyn = False, isRotate = False, isSimulation=True):
         
         self.sensor_para_list = sensor_para_list
         self.sensor_num = len(sensor_para_list)
@@ -30,8 +30,9 @@ class cenAgent:
         # a threshold d0 for metrics
         self.t = 0
         self.isObsdyn = isObsdyn
+        self.isSimulation = isSimulation
         self.tracker = jpdaSeq(dt, sensor_para_list, len(sensor_para_list), 
-                isSimulation=True, isObsdyn=self.isObsdyn,
+                isSimulation=self.isSimulation, isObsdyn=self.isObsdyn,
                 ConfirmationThreshold = [8, 10],
                 DeletionThreshold = [10, 12])
         self.v_list = [[0, 0]] * self.sensor_num
@@ -58,50 +59,58 @@ class cenAgent:
             R = R0
         return R
 
-    def obs_update_callback(self, t, dt, z_k):
-        
-        # add noise to targets 
-        multi_size_k = []
-        multi_z_k = []
-        obs_points_k = []
-        if self.isObsdyn:
-            
-            for j in range(self.sensor_num):
-                
-                size_k_i = []
-                z_k_i = copy.deepcopy(z_k)
+    def obs_update_callback(self, t, dt, z_k, size_k):
+        if self.isSimulation:
+            # add noise to targets 
+            multi_size_k = []
+            multi_z_k = []
+            obs_points_k = []
 
-                for i in range(len(z_k)):
-                    R = self.cal_R(z_k[i], self.sensor_para_list[j]["position"], j)
-                    z_k_i[i][0] += np.random.normal(0, R[0,0])
-                    z_k_i[i][1] += np.random.normal(0, R[1,1])
-                    size_k_i.append([1, 1, 2, 0.1])
-                
-                z_k_i, size_k = self.tracker.obs_fov(z_k_i, size_k_i, self.sensor_para_list[j]["position"], j)
-                obs_points_k += copy.deepcopy(z_k_i)
-                multi_z_k.append(z_k_i)
-                multi_size_k.append(size_k)
-            ellips_inputs_k, bb_output_k = self.tracker.track_update(t, dt, multi_z_k, multi_size_k, self.sensor_para_list)
+            # extract the previous track list
+            preTrackList = copy.deepcopy(self.tracker.track_list_next_index)
 
-
-        else:
-            for j in range(self.sensor_num):
+            if self.isObsdyn:
                 
-                size_k_i = []
-                z_k_i = copy.deepcopy(z_k)
-                for i in range(len(z_k)):
+                for j in range(self.sensor_num):
                     
-                    z_k_i[i][0] += np.random.normal(0, self.tracker.R_list[j][0,0])
-                    z_k_i[i][1] += np.random.normal(0, self.tracker.R_list[j][1,1])
-                    size_k_i.append([1, 1, 2, 0.1])
+                    size_k_i = []
+                    z_k_i = copy.deepcopy(z_k)
 
-                z_k_i, size_k = self.tracker.obs_fov(z_k_i, size_k_i, self.sensor_para_list[j]["position"], j)
-                obs_points_k += copy.deepcopy(z_k_i)
-                multi_z_k.append(z_k_i)
-                multi_size_k.append(size_k)
-            ellips_inputs_k, bb_output_k = self.tracker.track_update(t, dt, multi_z_k, multi_size_k, self.sensor_para_list)
+                    for i in range(len(z_k)):
+                        R = self.cal_R(z_k[i], self.sensor_para_list[j]["position"], j)
+                        z_k_i[i][0] += np.random.normal(0, R[0,0])
+                        z_k_i[i][1] += np.random.normal(0, R[1,1])
+                        size_k_i.append([1, 1, 2, 0.1])
+                    
+                    z_k_i, size_k = self.tracker.obs_fov(z_k_i, size_k_i, self.sensor_para_list[j]["position"], j)
+                    obs_points_k += copy.deepcopy(z_k_i)
+                    multi_z_k.append(z_k_i)
+                    multi_size_k.append(size_k)
+                ellips_inputs_k, bb_output_k = self.tracker.track_update(t, dt, multi_z_k, multi_size_k, self.sensor_para_list)
 
-        return ellips_inputs_k, bb_output_k, obs_points_k
+            else:
+                for j in range(self.sensor_num):
+                    
+                    size_k_i = []
+                    z_k_i = copy.deepcopy(z_k)
+                    for i in range(len(z_k)):
+                        
+                        z_k_i[i][0] += np.random.normal(0, self.tracker.R_list[j][0,0])
+                        z_k_i[i][1] += np.random.normal(0, self.tracker.R_list[j][1,1])
+                        size_k_i.append([1, 1, 2, 0.1])
+
+                    z_k_i, size_k = self.tracker.obs_fov(z_k_i, size_k_i, self.sensor_para_list[j]["position"], j)
+                    obs_points_k += copy.deepcopy(z_k_i)
+                    multi_z_k.append(z_k_i)
+                    multi_size_k.append(size_k)
+                ellips_inputs_k, bb_output_k = self.tracker.track_update(t, dt, multi_z_k, multi_size_k, self.sensor_para_list)
+            curTrackList = copy.deepcopy(self.tracker.track_list_next_index)
+            deletedTrackList = list(set(preTrackList) - set(curTrackList))
+            return ellips_inputs_k, bb_output_k, deletedTrackList
+        
+        else:
+            ellips_inputs_k, bb_output_k = self.tracker.track_update(t, dt, z_k, size_k, self.sensor_para_list)
+            return ellips_inputs_k, bb_output_k
     
     def base_policy(self, sen_id, tar_pos):
         sen_pos = self.sensor_para_list[sen_id]["position"][0:2]

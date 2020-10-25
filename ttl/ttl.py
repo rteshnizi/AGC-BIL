@@ -33,19 +33,10 @@ class Ttl(object):
 
 	def sim(self, isMoving, isObsDyn, isRotate, isFalseAlarm):
 		time_set = np.linspace(self.dt, self.dt * self.step_num, self.step_num)
-		# true_target_set = []
-		# noise_set = []
-		# total_z = []
-		# observation_z = []
-		# seq_track_est = []
-		# seq_agent_pos = []
-		trackRecord = {}
-		agentRecord = {}
+		
 		# initialize agent in agentRecord
-		for i in range(len(self.sensor_para_list)):
-			agentRecord[i] = {"Datap": [], "FoV": [], "AgentID": i}
-
-		centralized_fusor = cenAgent(self.sensor_para_list, self.dt, isObsdyn=isObsDyn, isRotate=isRotate)
+		obs = []
+		centralized_fusor = cenAgent(self.sensor_para_list, self.dt, isObsdyn=isObsDyn, isRotate=isRotate, isSimulation=True)
 
 		for t in time_set:
 
@@ -55,23 +46,21 @@ class Ttl(object):
 			z_k = true_k + noise_k
 			# total_z.append(z_k)
 
-			ellips_inputs_k, bb_output_k, obs_points_k = centralized_fusor.obs_update_callback(t, self.dt, z_k)
-			# observation_z.append(obs_points_k)
-			# seq_track_est_k = []
+			ellips_inputs_k, bb_output_k, deletedTrackList = centralized_fusor.obs_update_callback(t, self.dt, z_k, [])
+			
+			buffer = {"t": t, "deletedTracks": deletedTrackList, "sensors": [], "tracks": []}
 
 			for track in ellips_inputs_k:
 				x = track.kf.x_k_k[0,0]
 				y = track.kf.x_k_k[1,0]
-				P = track.kf.P_k_k.flatten().tolist()[0]
-				if track.id in trackRecord.keys():
-					trackRecord[track.id]["Datap"].append([t, x, y, 0])
-				else:
-					trackRecord[track.id] = {"Datap": [[t, x, y, 0]], "trackID": track.id}
+				trackObj = {"ID": track.id, "pose": [x, y, 0]}
+				# P = track.kf.P_k_k.flatten().tolist()[0]
+				# if track.id in trackRecord.keys():
+				# 	trackRecord[track.id]["Datap"].append([t, x, y, 0])
+				# else:
+				# 	trackRecord[track.id] = {"Datap": [[t, x, y, 0]], "trackID": track.id}
+				buffer["tracks"].append(trackObj)
 				# seq_track_est_k.append([x, y, P])
-
-
-			# seq_track_est.append(seq_track_est_k)
-
 
 			# move sensors
 			if isMoving:
@@ -83,20 +72,16 @@ class Ttl(object):
 			for i in range(centralized_fusor.sensor_num):
 				x = centralized_fusor.sensor_para_list[i]["position"][0]
 				y = centralized_fusor.sensor_para_list[i]["position"][1]
-				theta = centralized_fusor.sensor_para_list[i]["position"][2]
-				agentRecord[i]["Datap"].append(copy.deepcopy([t, x, y, theta]))
-				X, Y = self.RectangleCorners(centralized_fusor.sensor_para_list[i]["position"], centralized_fusor.sensor_para_list[i]["shape"][1])
-				agentRecord[i]["FoV"].append([[X, Y]])
+				theta = centralized_fusor.sensor_para_list[i]["position"][2]				
+				X, Y = self.RectangleCorners(centralized_fusor.sensor_para_list[i]["position"], centralized_fusor.sensor_para_list[i]["shape"][1])				
+				agentObj = {"ID": i, "pose": [x, y, theta], "FoV": [[X, Y]]}
+				buffer["sensors"].append(agentObj)
+			obs.append(buffer)
 
-		output = []
-		for key in agentRecord.keys():
-			output.append(agentRecord[key])
-		for key in trackRecord.keys():
-			output.append(trackRecord[key])
 		path = os.getcwd()
 		filename = os.path.join(path, "data", "obs.json")
 		with open(filename, 'w') as outfiles:
-			json.dump(output, outfiles, indent="\t")
+			json.dump(obs, outfiles, indent="\t")
 
 	def RotationMatrix(self, theta):
 		return np.matrix([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
