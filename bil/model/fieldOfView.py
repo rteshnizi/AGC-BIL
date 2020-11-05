@@ -3,7 +3,8 @@ import networkx as nx
 
 from bil.utils.graph import GraphAlgorithms
 from bil.model.sensingRegion import SensingRegion
-from bil.model.graph import ConnectivityGraph
+from bil.model.connectivityGraph import ConnectivityGraph
+from bil.model.timedGraph import TimedGraph
 
 class FieldOfView:
 	def __init__(self, envMap):
@@ -13,7 +14,7 @@ class FieldOfView:
 		self.map = envMap
 		self._cGraphs: List[ConnectivityGraph] = None
 		self.condensedCGraphs: List[ConnectivityGraph] = []
-		self._chainedGraphThroughTime: nx.DiGraph = None
+		self._chainedGraphThroughTime: TimedGraph = None
 
 	def __len__(self):
 		return len(self.regions)
@@ -31,10 +32,9 @@ class FieldOfView:
 				index += 1
 		return self._cGraphs
 
-	@property
-	def chainedGraphThroughTime(self):
+	def chainedGraphThroughTime(self, spec):
 		if self._chainedGraphThroughTime is None:
-			self._chainedGraphThroughTime = GraphAlgorithms.chainCondensedGraphsThroughTime(self.cGraphs)
+			self._chainedGraphThroughTime = TimedGraph(self.cGraphs, spec)
 		return self._chainedGraphThroughTime
 
 	def append(self, region, timestamp, agentIndex):

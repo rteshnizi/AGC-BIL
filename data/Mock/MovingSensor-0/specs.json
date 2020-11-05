@@ -1,0 +1,8 @@
+{
+	"simple": {
+		"specifier": ["t0", "r38", "r72"],
+		"symbols": {
+			"t0": 0.1
+		}
+	}
+}

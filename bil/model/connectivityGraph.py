@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from shapely.geometry import LineString, Point, Polygon
 from typing import List, Set, Dict
 
-from bil.model.story import Story
+from bil.model.observation import Observation
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.shadowRegion import ShadowRegion
 from bil.utils.geometry import Geometry
@@ -16,23 +16,23 @@ class ConnectivityGraph(nx.DiGraph):
 		self._beamNodes = []
 		self._beamSet = set()
 		self.fov = fov
+		self.map = map
 		self.timestamp = timestamp
 		self.graphIndex = graphIndex
 		self._disjointPolys: List[PolygonalRegion] = []
 		print("Building graph for %s" % self.timestamp)
-		self._buildFromMap(map, fov)
+		self._buildFromMap(fov)
 		self._fig = None
 		self._condensed = None
 		self.nodeClusters: Dict[str, Set[str]] = {}
 		self.nodeToClusterMap: Dict[str, str] = {}
 
-	@property
-	def condensed(self):
+	def condense(self, spec):
 		if self._condensed is not None: return self._condensed
 		print("Condensing %s" % self.timestamp)
 		self.nodeClusters: Dict[str, Set[str]] = {}
 		self.nodeToClusterMap: Dict[str, str] = {}
-		self._condensed = self._condense()
+		self._condensed = self._condense(spec)
 		return self._condensed
 
 	def _addBeamNodes(self, rOut, rIn):
@@ -61,13 +61,13 @@ class ConnectivityGraph(nx.DiGraph):
 		self._addNode(name)
 		self._beamNodes.append(name)
 
-	def _getMapRegion(self, name, map):
-		return map.regions.get(name.split("-")[0], None)
+	def _getMapRegion(self, name):
+		return self.map.regions.get(name.split("-")[0], None)
 
-	def _buildFromMap(self, map, fov):
+	def _buildFromMap(self, fov):
 		fovUnion = Geometry.union([r.polygon for r in fov])
 		for fovRegion in fov: self._addRegion(fovRegion)
-		for mapR in map.regions.values():
+		for mapR in self.map.regions.values():
 			if Geometry.polygonAndPolygonIntersect(mapR.polygon, fovUnion):
 				insidePolys = Geometry.intersect(mapR.polygon, fovUnion)
 				insidePolys = [p for p in insidePolys if p.length > 0]
@@ -80,7 +80,7 @@ class ConnectivityGraph(nx.DiGraph):
 
 		for p1 in self._disjointPolys:
 			if not isinstance(p1, ShadowRegion): continue
-			if self._getMapRegion(p1.name, map).isObstacle: continue
+			if self._getMapRegion(p1.name).isObstacle: continue
 			self._addRegion(p1)
 			for fovRegion in fov:
 				e = Geometry.commonEdge(p1.polygon, fovRegion.polygon)
@@ -88,18 +88,25 @@ class ConnectivityGraph(nx.DiGraph):
 			for p2 in self._disjointPolys:
 				if p1 == p2: continue
 				if not isinstance(p2, ShadowRegion): continue
-				if self._getMapRegion(p2.name, map).isObstacle: continue
+				if self._getMapRegion(p2.name).isObstacle: continue
 				e = Geometry.commonEdge(p1.polygon, p2.polygon)
 				if e: self.add_edge(p1.name, p2.name)
 
 	def getSensorReadings(self, startPose, endPose):
-		for p in self._disjointPolys:
-			l = Geometry.createLine(startPose.x, startPose.y, endPose.x, endPose.y)
-			if Geometry.lineAndPolygonIntersect(l, p.polygon):
-				beam = self._findBeamNode(l, p)
-				# FIXME: In general I have to find all the beam crossings and sort them in the crossing order
-				# For the first demo I'm just assuming only one beam is crossed
-				return [beam]
+		startPolygonName = None
+		endPolygonName = None
+		for region in self._disjointPolys:
+			if Geometry.isXyInsidePolygon(startPose.x, startPose.y, region.polygon):
+				startPolygonName = region.name
+			if Geometry.isXyInsidePolygon(endPose.x, endPose.y, region.polygon):
+				endPolygonName = region.name
+			if startPolygonName is not None and endPolygonName is not None:
+				break
+			beam = None
+			if self.nodeToClusterMap[startPolygonName] != self.nodeToClusterMap[endPolygonName]:
+				beam = GraphAlgorithms.getBeamName(startPolygonName, endPolygonName)
+				beam = self._condenseBeam(beam)
+		return [self.nodeToClusterMap[startPolygonName], beam ] if beam is not None else [self.nodeToClusterMap[startPolygonName]]
 
 	def _findBeamNode(self, l: LineString, p: PolygonalRegion):
 		for other in self._disjointPolys:
@@ -127,18 +134,27 @@ class ConnectivityGraph(nx.DiGraph):
 			end = self.nodeToClusterMap[end]
 		return GraphAlgorithms.getBeamName(start, end)
 
-	def _condense(self) -> nx.DiGraph:
+	def _condense(self, spec) -> nx.DiGraph:
 		for n1 in self.nodes:
 			if n1 in self.nodeToClusterMap: continue
 			if GraphAlgorithms.isBeamNode(n1):
 				self._addCluster(n1)
 				continue
-			if n1 not in self.nodeToClusterMap: self._addCluster(n1)
+			if n1 not in self.nodeToClusterMap:
+				self._addCluster(n1)
+			else:
+				r1 = self._getMapRegion(n1)
+				if r1 is not None and r1.name in spec:
+					self._addCluster(n1)
 
 			for n2 in self.nodes:
 				if n2 in self.nodeToClusterMap: continue
 				if n1 == n2: continue
 				if GraphAlgorithms.isBeamNode(n2):
+					self._addCluster(n2)
+					continue
+				r2 = self._getMapRegion(n2)
+				if r2 is not None and r2.name in spec:
 					self._addCluster(n2)
 					continue
 				# FIXME: This should happen in one DFS not n^2

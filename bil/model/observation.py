@@ -5,53 +5,69 @@ from bil.model.map import Map
 from bil.model.trajectory import Trajectory
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
+from bil.gui.drawing import Drawing
 
-class Story:
+class Observation:
+	"""
+	This object contains sensed information
+	"""
 	def __init__(self, agent, trajectoryData, envMap: Map, valid: list):
 		self.agent = agent
 		self.trajectory = Trajectory("T%s" % self.agent.name, trajectoryData)
 		self.sensed = self.trajectory.clip(valid)
 		self.groundTruth: list = None
+		self._circleIds = []
 
-	def getSensorReadings(self, graph):
+	def _getSensorReadings(self, graph):
 		sensorReadings = []
 		for i in range(len(self.sensed.poses) - 1):
 			readings = graph.getSensorReadings(self.sensed.poses[i], self.sensed.poses[i + 1])
 			sensorReadings = sensorReadings + readings
 		return sensorReadings
 
+	def clear(self, canvas):
+		self.trajectory.clear(canvas)
+		for circleId in self._circleIds:
+			Drawing.RemoveShape(canvas, circleId)
+		self._circleIds = []
+
 	def render(self, canvas):
 		print("Traj %s" % self.agent.name)
 		self.trajectory.render(canvas)
+		for p in self.sensed.poses:
+			self._circleIds.append(Drawing.CreateCircle(canvas, p.x, p.y, radius=5, outline=self.trajectory.MARKING_COLOR, fill=self.trajectory.MARKING_COLOR, tag="%s-%.1f" % (self.trajectory.name, p.time)))
 
-	def validate(self, envMap: Map, fov: "FieldOfView", verbose=False) -> bool:
-		if not self.trajectory.validate(envMap):
-			print("invalid trajectory %s" % self.trajectory.name)
-			return False
+	# def validate(self, envMap: Map, fov: "FieldOfView", verbose=False) -> bool:
+	# 	if not self.trajectory.validate(envMap):
+	# 		print("invalid trajectory %s" % self.trajectory.name)
+	# 		return False
 
-		# FIXME: For now the assumption is that fov is static, so we use fov.cGraphs[0]
-		graph = fov.cGraphs[0]
-		self.groundTruth = self.trajectory.buildString(graph)
+	# 	# FIXME: For now the assumption is that fov is static, so we use fov.cGraphs[0]
+	# 	graph = fov.cGraphs[0]
+	# 	self.groundTruth = self.trajectory.buildString(graph)
 
-		totalIsValid = False
-		longestLength = 0
-		longest = None
-		for i in range(len(self.groundTruth)):
-			for j in range(i + 1, len(self.groundTruth)):
-				isValid = self.validateWithSpecification(envMap, fov, graph, self.groundTruth[i:j], sensorReadings, verbose)
-				if isValid:
-					totalIsValid = True
-					print("validated %s" % repr(self.groundTruth[i:j]))
-					if j - i > longestLength:
-						longest = self.groundTruth[i:j]
-						longestLength = j - i
-		# isValid = self.validateWithSpecification(envMap, fov, graph, self.groundTruth[3:6], sensorReadings, verbose)
-		# if isValid: return True
-		return totalIsValid
+	# 	totalIsValid = False
+	# 	longestLength = 0
+	# 	longest = None
+	# 	for i in range(len(self.groundTruth)):
+	# 		for j in range(i + 1, len(self.groundTruth)):
+	# 			isValid = self.validateWithSpecification(envMap, fov, graph, self.groundTruth[i:j], sensorReadings, verbose)
+	# 			if isValid:
+	# 				totalIsValid = True
+	# 				print("validated %s" % repr(self.groundTruth[i:j]))
+	# 				if j - i > longestLength:
+	# 					longest = self.groundTruth[i:j]
+	# 					longestLength = j - i
+	# 	# isValid = self.validateWithSpecification(envMap, fov, graph, self.groundTruth[3:6], sensorReadings, verbose)
+	# 	# if isValid: return True
+	# 	return totalIsValid
 
-	def validateWithSpecification(self, map: Map, fov: "FieldOfView", graph, specification, sensorReadings, verbose=False) -> bool:
+	def validateWithSpecification(self, map: Map, fov: "FieldOfView", specification, verbose=False) -> bool:
 		if len(specification) == 0: return False
 
+		for graph in fov.cGraphs:
+			return
+		return
 		subGraphs = []
 		numSensorReadings = len(sensorReadings)
 		for i in range(numSensorReadings + 1):

@@ -4,18 +4,22 @@ import time
 from tkinter import filedialog
 
 from bil.gui.canvas import Canvas
+from bil.model.timedGraph import TimedGraph
 from bil.utils.graph import GraphAlgorithms
 
 class App(tk.Frame):
-	def __init__(self, scenario):
+	def __init__(self, scenario, validateCallback, spec):
 		self.scenario = scenario
+		self.spec = spec
+		# This is the method to call when validate button is clicked
+		self._validateCallback = validateCallback
 		self.timeSteps = len(self.scenario.fov) - 1
 		self.master = tk.Tk()
 		self.master.title("Canvas")
 		self.master.geometry("1000x900")
 		self.master.protocol("WM_DELETE_WINDOW", self._onClose)
 
-		#Create & Configure frame
+		# Create & Configure frame
 		tk.Grid.rowconfigure(self.master, 0, weight=1)
 		tk.Grid.columnconfigure(self.master, 0, weight=1)
 		self.frame = tk.Frame(self.master)
@@ -24,12 +28,12 @@ class App(tk.Frame):
 		tk.Grid.rowconfigure(self.frame, 1, minsize=25)
 		tk.Grid.rowconfigure(self.frame, 2, minsize=850)
 		super().__init__(self.master)
-		# self.pack()
 		self.fovLabel = tk.StringVar(master=self.master)
 		self._fovIndex = 0
 		self.fovLabel.set(self._fovLabel)
 		self._dbg = {
 			"Print Mouse": tk.IntVar(master=self.master, value=0),
+			"Render Trajectory": tk.IntVar(master=self.master, value=1),
 			"Display Geom Graph": tk.IntVar(master=self.master, value=0),
 			"Display Spring Graph": tk.IntVar(master=self.master, value=1),
 			"Show FOV": tk.IntVar(master=self.master, value=0),
@@ -37,8 +41,22 @@ class App(tk.Frame):
 		self.createButtons()
 		self.createDebugOptions()
 		self.canvas = Canvas(master=self.frame, app=self, row=2, col=0)
-		self.canvas.render(self.scenario)
+		self._renderScenario()
+		self._renderTrajectories()
 		self.lastDisplayedGraph = None
+
+	def _renderScenario(self):
+		self.scenario.map.render(self.canvas.tkCanvas)
+
+	def _renderTrajectories(self):
+		if not self.shouldRenderTrajectory: return
+		for storyName in self.scenario.observations:
+			self.scenario.observations[storyName].render(self.canvas.tkCanvas)
+
+	def _clearTrajectories(self):
+		if self.shouldRenderTrajectory: return
+		for storyName in self.scenario.observations:
+			self.scenario.observations[storyName].clear(self.canvas.tkCanvas)
 
 	@property
 	def _fovLabel(self):
@@ -47,6 +65,10 @@ class App(tk.Frame):
 	def _onClose(self):
 		GraphAlgorithms.killAllDisplayedGraph()
 		self.master.destroy()
+
+	def _toggleTrajectory(self):
+		self._clearTrajectories()
+		self._renderTrajectories()
 
 	def _toggleFov(self):
 		self._clearFOV()
@@ -67,6 +89,10 @@ class App(tk.Frame):
 	@property
 	def shouldPrintMouse(self) -> bool:
 		return self._dbg["Print Mouse"].get() == 1
+
+	@property
+	def shouldRenderTrajectory(self) -> bool:
+		return self._dbg["Render Trajectory"].get() == 1
 
 	@property
 	def shouldShowFOV(self) -> bool:
@@ -99,11 +125,11 @@ class App(tk.Frame):
 		self._changeFov(False)
 
 	def chainGraphs(self):
-		chained = GraphAlgorithms.chainCondensedGraphsThroughTime(self.scenario.fov.cGraphs, self._fovIndex, self._fovIndex + 2)
+		chained = TimedGraph(self.scenario.fov.cGraphs, self.spec, self._fovIndex, self._fovIndex + 2)
 		GraphAlgorithms.displayGraphAuto(chained, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def chainAll(self):
-		GraphAlgorithms.displayGraphAuto(self.scenario.fov.chainedGraphThroughTime, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
+		GraphAlgorithms.displayGraphAuto(self.scenario.fov.chainedGraphThroughTime(self.spec), displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def _createButton(self, row, col, text, callback):
 		tk.Grid.columnconfigure(self.frame, col, weight=1)
@@ -148,12 +174,14 @@ class App(tk.Frame):
 			checkbox = tk.Checkbutton(master=self.frame, text=text, variable=variable)
 			if text == "Show FOV":
 				checkbox["command"] = self._toggleFov
+			if text == "Render Trajectory":
+				checkbox["command"] = self._toggleTrajectory
 			checkbox.grid(row=1, column=column)
 			column += 1
 
 	def condenseGraph(self):
-		condensed = self.scenario.fov.cGraphs[self._fovIndex].condensed
+		condensed = self.scenario.fov.cGraphs[self._fovIndex].condense(self.spec)
 		GraphAlgorithms.displayGraphAuto(condensed, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def validate(self):
-		self.scenario.validate()
+		self._validateCallback()

@@ -1,6 +1,5 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-import time
 from mpl_toolkits.mplot3d import Axes3D
 from math import nan, isnan
 from queue import Queue
@@ -158,80 +157,6 @@ class GraphAlgorithms:
 	@staticmethod
 	def _getTimedNodeName(nodeName, timestamp):
 		return "%s-%.1f" % (nodeName, timestamp)
-
-	@staticmethod
-	def chainGraphsThroughTime(graphs) -> nx.DiGraph:
-		chained = nx.DiGraph()
-		for g in graphs:
-			print ("Chaining for %.1f" % g.timestamp)
-			for n in g.nodes:
-				newNode = GraphAlgorithms._getTimedNodeName(n, g.timestamp)
-				chained.add_node(newNode)
-				GraphAlgorithms.cloneNodeProps(g.nodes[n], chained.nodes[newNode])
-				chained.nodes[newNode]["polygonName"] = n
-			for e in g.edges:
-				chained.add_edge(GraphAlgorithms._getTimedNodeName(e[0], g.timestamp), GraphAlgorithms._getTimedNodeName(e[1], g.timestamp))
-
-		print("n = %d" % len(chained.nodes))
-		print("O(%d)" % (len(chained.nodes) * len(chained.nodes)))
-		for n1 in chained.nodes:
-			for n2 in chained.nodes:
-				if chained.nodes[n1]["polygonName"] != chained.nodes[n2]["polygonName"]: continue
-				higher = n1 if chained.nodes[n1]["timestamp"] > chained.nodes[n2]["timestamp"] else n2
-				lower = n1 if higher != n1 else n2
-				chained.add_edge(lower, higher)
-		return chained
-
-	@staticmethod
-	def chainCondensedGraphsThroughTime(graphs: List["ConnectivityGraph"], startInd = 0, endInd = None) -> nx.DiGraph:
-		if endInd is None: endInd = len(graphs)
-		if (startInd - endInd) >= 0:
-			startInd = 0
-			endInd = len(graphs)
-		chained = nx.DiGraph()
-		nodeLayers = []
-		for i in range(startInd, endInd):
-			g = graphs[i]
-			layerIndex = len(nodeLayers)
-			nodeLayers.append([])
-			print ("Chaining for %.1f" % g.timestamp)
-			for n in g.condensed.nodes:
-				newNode = GraphAlgorithms._getTimedNodeName(n, g.timestamp)
-				chained.add_node(newNode)
-				n = n if n in g.nodes else g.condensed.nodes[n]["mappedName"]
-				GraphAlgorithms.cloneNodeProps(g.nodes[n], chained.nodes[newNode])
-				chained.nodes[newNode]["polygonName"] = n # This is lazy way to obtain the name of the polygon without doing string split etc.
-				chained.nodes[newNode]["cluster"] = g.nodeClusters[g.nodeToClusterMap[n]]
-				nodeLayers[layerIndex].append(newNode)
-			for e in g.condensed.edges:
-				chained.add_edge(GraphAlgorithms._getTimedNodeName(e[0], g.timestamp), GraphAlgorithms._getTimedNodeName(e[1], g.timestamp))
-
-		print("n = %d" % len(chained.nodes))
-		print("O(%d)" % (len(chained.nodes) * len(chained.nodes)))
-		startTime = time.time()
-		for layerIndex in range(len(nodeLayers) - 1):
-			lowerLayer = nodeLayers[layerIndex]
-			upperLayer = nodeLayers[layerIndex + 1]
-			for n1 in lowerLayer:
-				for n2 in upperLayer:
-					shouldConnect = False
-					if chained.nodes[n1]["polygonName"] == chained.nodes[n2]["polygonName"]: shouldConnect = True
-					if not shouldConnect and chained.nodes[n1]["polygonName"] in chained.nodes[n1]["cluster"]: shouldConnect = True
-					if not shouldConnect: continue
-					higher = n1 if chained.nodes[n1]["timestamp"] > chained.nodes[n2]["timestamp"] else n2
-					lower = n1 if higher != n1 else n2
-					chained.add_edge(lower, higher)
-
-		# All Layers
-		# for n1 in chained.nodes:
-		# 	for n2 in chained.nodes:
-		# 		if chained.nodes[n1]["polygonName"] != chained.nodes[n2]["polygonName"]: continue
-		# 		higher = n1 if chained.nodes[n1]["timestamp"] > chained.nodes[n2]["timestamp"] else n2
-		# 		lower = n1 if higher != n1 else n2
-		# 		chained.add_edge(lower, higher)
-		endTime = time.time()
-		print("%.3f s" % (endTime - startTime))
-		return chained
 
 	@staticmethod
 	def killDisplayedGraph(fig):
