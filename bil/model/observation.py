@@ -11,10 +11,10 @@ class Observation:
 	"""
 	This object contains sensed information
 	"""
-	def __init__(self, agentName, trajectoryData, envMap: Map):
+	def __init__(self, agentName, trajectoryData, envMap: Map, valid: list=None):
 		self.agentName = agentName
 		self.trajectory = Trajectory("T%s" % self.agentName, trajectoryData)
-		self.sensed = self.trajectory
+		if valid is not None: self.sensed = self.trajectory.clip(valid)
 		self.groundTruth: list = None
 		self._circleIds = []
 

@@ -6,8 +6,8 @@ import os
 from bil.model.featureMap import FeatureMap
 from bil.model.map import Map
 from bil.model.observation import Observation
-# from bil.model.agent import Agent
-# from bil.model.teamMember import TeamMember
+from bil.model.agent import Agent
+from bil.model.teamMember import TeamMember
 from bil.model.observation import Observation
 
 class Parser(ABC):
@@ -52,7 +52,8 @@ class EnvironmentParser(Parser):
 class ObservationParser(Parser):
 	def __init__(self, dirAbsPath):
 		super().__init__(dirAbsPath)
-		self._observationsJsonPath = os.path.abspath(os.path.join(self._dirAbsPath, "obs-tianqi.json"))
+		self._observationsJsonPath = os.path.abspath(os.path.join(self._dirAbsPath, "obs.json"))
+		self._obsTianqiJsonPath = os.path.abspath(os.path.join(self._dirAbsPath, "obs-tianqi.json"))
 		self._agentIdKey = "AgentID"
 		self._trackIdKey = "trackID"
 		self._pointsKey = "Datap"
@@ -62,10 +63,46 @@ class ObservationParser(Parser):
 		"""
 		Returns
 		===
-		A tuple `observations`
+		A tuple `(observations, sens)`
 		Stories are sensor readings, Agents are sensor locations
 		"""
 		with open(self._observationsJsonPath, 'r') as jsonFile:
+			parsedObservation = json.load(jsonFile)
+		idNum = 0
+		observations = {}
+		agents = {}
+		for entity in parsedObservation:
+			idNum += 1
+			# Not a team member
+			if "valid" in entity:
+				agent = Agent(idNum)
+				trajectoryData = entity["Datap"]
+				valid = entity["valid"]
+				s = Observation(agent, trajectoryData, envMap, valid)
+				observations[agent.agentId] = s
+			# An AGC member
+			else:
+				# The FOV list contains field of view per timestamp
+				# For each timestamp, it contains a list of individual FOVs per sensor on the vehicle
+				# Each FOV per sensor has 2 lists: [x1, x2, x3, ...],[y1, y2, y3, ...]
+				member = TeamMember(idNum)
+				agents[member.agentId] = member
+				for i in range(len(entity["FOV"])):
+					# FIXME: For now there is only one sensor per vehicle, we might have to union them later
+					xs = entity["FOV"][i][0][0]
+					ys = entity["FOV"][i][0][1]
+					coords = [[xs[j], ys[j]] for j in range(len(xs))]
+					fov.append(coords, entity["Datap"][i][0], agentIndex=len(agents) - 1)
+		return (observations, agents)
+
+	def parseNew(self, envMap, fov):
+		"""
+		Returns
+		===
+		A tuple `observations`
+		Stories are sensor readings, Agents are sensor locations
+		"""
+		with open(self._obsTianqiJsonPath, 'r') as jsonFile:
 			parsedObservation = json.load(jsonFile)
 		observations = {}
 		for entity in parsedObservation:
