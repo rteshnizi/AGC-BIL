@@ -6,8 +6,8 @@ import os
 from bil.model.featureMap import FeatureMap
 from bil.model.map import Map
 from bil.model.observation import Observation
-from bil.model.agent import Agent
-from bil.model.teamMember import TeamMember
+# from bil.model.agent import Agent
+# from bil.model.teamMember import TeamMember
 from bil.model.observation import Observation
 
 class Parser(ABC):
@@ -52,41 +52,42 @@ class EnvironmentParser(Parser):
 class ObservationParser(Parser):
 	def __init__(self, dirAbsPath):
 		super().__init__(dirAbsPath)
-		self._observationsJsonPath = os.path.abspath(os.path.join(self._dirAbsPath, "obs.json"))
+		self._observationsJsonPath = os.path.abspath(os.path.join(self._dirAbsPath, "obs-tianqi.json"))
+		self._agentIdKey = "AgentID"
+		self._trackIdKey = "trackID"
+		self._pointsKey = "Datap"
+		self._fovKey = "FoV"
 
 	def parse(self, envMap, fov):
 		"""
 		Returns
 		===
-		A tuple `(observations, sens)`
+		A tuple `observations`
 		Stories are sensor readings, Agents are sensor locations
 		"""
 		with open(self._observationsJsonPath, 'r') as jsonFile:
 			parsedObservation = json.load(jsonFile)
-		idNum = 0
 		observations = {}
-		agents = {}
 		for entity in parsedObservation:
-			idNum += 1
 			# Not a team member
-			if "valid" in entity:
-				trajectoryData = entity["Datap"]
-				valid = entity["valid"]
-				s = Observation(agent, trajectoryData, envMap, valid)
-				observations[agent.agentId] = s
+			if self._trackIdKey in entity:
+				trackId = entity[self._trackIdKey]
+				trajectoryData = entity[self._pointsKey]
+				obs = Observation(trackId, trajectoryData, envMap)
+				observations[trackId] = obs
 			# An AGC member
 			else:
+				agentId = entity[self._agentIdKey]
 				# The FOV list contains field of view per timestamp
 				# For each timestamp, it contains a list of individual FOVs per sensor on the vehicle
 				# Each FOV per sensor has 2 lists: [x1, x2, x3, ...],[y1, y2, y3, ...]
-				agents[member.agentId] = member
-				for i in range(len(entity["FOV"])):
+				for i in range(len(entity[self._fovKey])):
 					# FIXME: For now there is only one sensor per vehicle, we might have to union them later
-					xs = entity["FOV"][i][0][0]
-					ys = entity["FOV"][i][0][1]
+					xs = entity[self._fovKey][i][0][0]
+					ys = entity[self._fovKey][i][0][1]
 					coords = [[xs[j], ys[j]] for j in range(len(xs))]
-					fov.append(coords, entity["Datap"][i][0], agentIndex=len(agents) - 1)
-		return (observations, agents)
+					fov.append(coords, entity[self._pointsKey][i][0], agentIndex=agentId)
+		return observations
 
 class SpecParser(Parser):
 	def __init__(self, dirAbsPath):

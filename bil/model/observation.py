@@ -11,10 +11,10 @@ class Observation:
 	"""
 	This object contains sensed information
 	"""
-	def __init__(self, agent, trajectoryData, envMap: Map, valid: list):
-		self.agent = agent
-		self.trajectory = Trajectory("T%s" % self.agent.name, trajectoryData)
-		self.sensed = self.trajectory.clip(valid)
+	def __init__(self, agentName, trajectoryData, envMap: Map):
+		self.agentName = agentName
+		self.trajectory = Trajectory("T%s" % self.agentName, trajectoryData)
+		self.sensed = self.trajectory
 		self.groundTruth: list = None
 		self._circleIds = []
 
@@ -32,7 +32,7 @@ class Observation:
 		self._circleIds = []
 
 	def render(self, canvas):
-		print("Traj %s" % self.agent.name)
+		print("Traj %s" % self.agentName.name)
 		self.trajectory.render(canvas)
 		for p in self.sensed.poses:
 			self._circleIds.append(Drawing.CreateCircle(canvas, p.x, p.y, radius=5, outline=self.trajectory.MARKING_COLOR, fill=self.trajectory.MARKING_COLOR, tag="%s-%.1f" % (self.trajectory.name, p.time)))
