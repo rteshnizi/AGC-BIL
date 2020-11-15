@@ -18,6 +18,7 @@ import numpy as np
 from ttl.util import EKFcontrol, measurement, track, vertex
 from scipy.optimize import linear_sum_assignment   # Hungarian alg, minimun bipartite matching
 import copy
+import bisect
 
 class cenAgent:
     def __init__(self, sensor_para_list, dt, v = 5, P0 = 2, isObsdyn = False, isRotate = False, isSimulation=True):
@@ -124,8 +125,6 @@ class cenAgent:
         
         return
 
-
-
     def central_base_policy(self, ellips_inputs_k):
 
         # 1. rank all current tracks, and picked the worst sensor_num tracks among them
@@ -165,6 +164,26 @@ class cenAgent:
         # (self.v_list)print
         return
     
+    def scenarioPolicy(self, t, scenario):
+
+        if scenario == 1:
+            TimeIntervalAg1 = [3, 15, 20,30]
+            v1 = [[0, 0], [0, -1.5], [0, -6], [-5, 0], [0,0]]
+            self.v_list[0] = v1[bisect.bisect(TimeIntervalAg1, t)]
+            TimeIntervalAg2 = [25, 40]
+            v2 = [[0, 0], [0, -2], [0,0]]
+            self.v_list[1] = v2[bisect.bisect(TimeIntervalAg2, t)]
+        elif scenario == 2:
+            TimeIntervalAg1 = [3, 15, 20,30,37]
+            v1 = [[0, 0], [0, -1.5], [0, -6], [-5, 0], [0, 5], [0,0]]
+            self.v_list[0] = v1[bisect.bisect(TimeIntervalAg1, t)]
+            TimeIntervalAg2 = [25, 40]
+            v2 = [[0, 0], [0, -2], [0,0]]
+            self.v_list[1] = v2[bisect.bisect(TimeIntervalAg2, t)]
+        else:
+            raise RuntimeError("Undefined scenario case, please run python3 main.py ttl 1 or python3 main.py ttl 2")
+        
+    
     def updateAngle(self, i):
         vx = self.v_list[i][0]
         vy = self.v_list[i][1]
@@ -172,7 +191,7 @@ class cenAgent:
             if np.isclose(vx, 0):
                 theta = np.sign(vy) * np.pi/2
             else:
-                theta = np.arctan(vx/vy)
+                theta = np.arctan(vy/vx)
                 if theta > 0:
                     if vx < 0:
                         theta += np.pi

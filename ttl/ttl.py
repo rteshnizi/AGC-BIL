@@ -1,12 +1,21 @@
 from ttl.centralizedAgent import cenAgent
+from ttl.effects import effects
 import random
 import copy
 import csv, json
 import os, sys
 import numpy as np
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
+# plt.rcParams['animation.ffmpeg_path'] = '/usr/bin/ffmpeg'
+import matplotlib.animation as animation
+from matplotlib.patches import Ellipse, Rectangle, FancyArrowPatch
+from scipy.stats.distributions import chi2
+
 
 class Ttl(object):
-	def __init__(self, bil=None):
+	def __init__(self, bil=None, scenario=-1):
 		self.bil = bil
 		# read sensor parameter
 		path = os.getcwd()
@@ -16,15 +25,18 @@ class Ttl(object):
 
 		self.sensor_para_list = data["sensors"]
 		self.dt = data["dt"]
-
+		self.obstacles = data["obstacles"]
 		# 2. Sequantial JPDA, centralized way
 
 		self.step_num = data["run_num"]
+		
+		# 3. scenario number
+		self.scenario = scenario  # available number: 1, 2
 
 	def run(self):
-		isMoving = False
+		isMoving = True
 		isObsDyn = False
-		isRotate = False
+		isRotate = True
 		isFalseAlarm = False
 
 		print("TTL sim starts")
@@ -32,11 +44,22 @@ class Ttl(object):
 		print("TTL sim ends, tracking results saved in data/obs.json")
 
 	def sim(self, isMoving, isObsDyn, isRotate, isFalseAlarm):
+		arrow_dia = 5
+		P_G = 0.9
+		gating_size = chi2.ppf(P_G, df = 2)
 		time_set = np.linspace(self.dt, self.dt * self.step_num, self.step_num)
 		
 		# initialize agent in agentRecord
 		obs = []
-		centralized_fusor = cenAgent(self.sensor_para_list, self.dt, isObsdyn=isObsDyn, isRotate=isRotate, isSimulation=True)
+		# for film maker
+		est = []
+		agentPos = []
+		observation_z = []
+
+		centralized_fusor = cenAgent(self.sensor_para_list, self.dt, 
+				isObsdyn=isObsDyn, isRotate=isRotate, isSimulation=True)
+		centralized_fusor.tracker.ConfirmationThreshold = [3, 4]
+		centralized_fusor.tracker.DeletionThreshold = [3, 5]
 
 		for t in time_set:
 
@@ -45,30 +68,33 @@ class Ttl(object):
 			# noise_set.append(noise_k)
 			z_k = true_k + noise_k
 			# total_z.append(z_k)
+			observation_z.append(z_k)
 
 			ellips_inputs_k, bb_output_k, deletedTrackList = centralized_fusor.obs_update_callback(t, self.dt, z_k, [])
 			
 			buffer = {"t": t, "deletedTracks": deletedTrackList, "sensors": [], "tracks": []}
-
+			seq_track_est_k = []
 			for track in ellips_inputs_k:
 				x = track.kf.x_k_k[0,0]
 				y = track.kf.x_k_k[1,0]
 				trackObj = {"ID": track.id, "pose": [x, y, 0]}
-				# P = track.kf.P_k_k.flatten().tolist()[0]
+				P = track.kf.P_k_k.flatten().tolist()[0]
 				# if track.id in trackRecord.keys():
 				# 	trackRecord[track.id]["Datap"].append([t, x, y, 0])
 				# else:
 				# 	trackRecord[track.id] = {"Datap": [[t, x, y, 0]], "trackID": track.id}
 				buffer["tracks"].append(trackObj)
-				# seq_track_est_k.append([x, y, P])
+				seq_track_est_k.append([x, y, P])
+			est.append(seq_track_est_k)
 
 			# move sensors
 			if isMoving:
-				centralized_fusor.central_base_policy(ellips_inputs_k)
+				# centralized_fusor.central_base_policy(ellips_inputs_k)
+				centralized_fusor.scenarioPolicy(t, self.scenario)
 				centralized_fusor.dynamics()
 
 			# collect sensors data
-
+			seq_sen_pos_k = []
 			for i in range(centralized_fusor.sensor_num):
 				x = centralized_fusor.sensor_para_list[i]["position"][0]
 				y = centralized_fusor.sensor_para_list[i]["position"][1]
@@ -76,12 +102,120 @@ class Ttl(object):
 				X, Y = self.RectangleCorners(centralized_fusor.sensor_para_list[i]["position"], centralized_fusor.sensor_para_list[i]["shape"][1])				
 				agentObj = {"ID": i, "pose": [x, y, theta], "FoV": [[X, Y]]}
 				buffer["sensors"].append(agentObj)
+				seq_sen_pos_k.append(centralized_fusor.sensor_para_list[i]["position"])
 			obs.append(buffer)
 
+			agentPos.append(copy.deepcopy(seq_sen_pos_k))
 		path = os.getcwd()
 		filename = os.path.join(path, "data", "obs.json")
 		with open(filename, 'w') as outfiles:
 			json.dump(obs, outfiles, indent="\t")
+		
+		# make video of the result
+		global ax, fig
+		fig = plt.figure()
+		#fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+		ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
+							xlim=(-50, 50), ylim=(-50, 50))
+
+		real_point, = ax.plot([], [], 'ko', ms=2)
+		# obs_list_anim = np.array(obs_list)
+		estimationPT, = ax.plot([], [], 'r*', ms=2)
+
+		timer = ax.text(-40, 40, '', fontsize = 10)
+		# lines stands for neighborings
+
+		def init():
+
+			"""initialize animation"""
+			
+			real_point.set_data([], [])
+			estimationPT.set_data([], [])
+			
+			# add FoVs
+			for i in range(len(self.sensor_para_list)):
+				para = self.sensor_para_list[i]
+				e = effects.make_rectangle(para["position"][0], para["position"][1], para["position"][2], para)
+				ax.add_artist(e)
+
+			# self.demo_connection(sensor_para_list, [], isInitPos = True)
+			
+			return real_point, estimationPT
+
+		def animate(i):
+			"""perform animation step"""
+			
+			#patches = []
+			# ax.patches = []
+			for obj in ax.findobj(match = Ellipse):
+				obj.remove()
+			
+			for obj in ax.findobj(match = FancyArrowPatch):
+				obj.remove()
+			
+			for obj in ax.findobj(match = Rectangle):
+				
+				if obj._width > 1:
+					obj.remove()
+
+			# add tracks
+			x, y = [], []
+			for track in est[i]:
+				mu = [track[0], track[1]]
+				x.append(mu[0])
+				y.append(mu[1])
+				P = track[2]
+				S = np.matrix(P).reshape(4,4)[0:2, 0:2]
+				e = effects.make_ellipse(mu, S, gating_size, 'r')
+				ax.add_artist(e)
+			estimationPT.set_data(x, y)
+			# add observations
+			x , y = [], []
+			for point in observation_z[i]:
+				
+				x.append(point[0])
+				y.append(point[1])
+			real_point.set_data(x, y)
+			# add agent pos & FoV
+			for j in range(len(agentPos[i])):
+				rec_cen = [agentPos[i][j][0], agentPos[i][j][1]]
+				# TODO theta will be derived from csv too
+				# h = sensor_para_list[j]["shape"][1][1]
+				# w = sensor_para_list[j]["shape"][1][0]
+				# x, y = left_bot_point(seq_agent_pos[i][j][0], seq_agent_pos[i][j][1], theta, h, w)
+
+				e = effects.make_rectangle(rec_cen[0], rec_cen[1], agentPos[i][j][2], self.sensor_para_list[j])
+				ax.add_artist(e)
+				
+				p2 = effects.vector(agentPos[i][j], arrow_dia)
+
+				e = FancyArrowPatch((agentPos[i][j][0], agentPos[i][j][1]), 
+							(p2[0], p2[1]),
+							arrowstyle='->',
+							linewidth=2,
+							color=self.sensor_para_list[j]["color"])
+				ax.add_artist(e)
+			
+			# add obstacles
+			for obs in self.obstacles:
+				rect = Rectangle((obs["position"][0], obs["position"][1]), 
+							obs["size"][0], obs["size"][1],
+							angle = 0,
+							lw = 1,
+							linestyle = '-',
+							color='yellow')
+				ax.add_artist(rect)
+
+			timer.set_text("t = %s" % (self.dt*i + self.dt))
+
+			return real_point, estimationPT, timer
+
+		ani = animation.FuncAnimation(fig, animate, frames=len(agentPos),
+									interval=10, blit=True, init_func=init, repeat = False)
+		
+		filename = os.path.join(path, "data", 'Scenario_'+str(self.scenario)+'_Visual.mp4')
+		ani.save(filename, fps=20)
+		plt.close()
 
 	def RotationMatrix(self, theta):
 		return np.matrix([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
@@ -105,59 +239,13 @@ class Ttl(object):
 	def generate_obs(self, t, isFalseAlarm, isMoving):
 
 		z_k = []
-
-		if not isMoving:
-
-			x = 20 - 40.0 / 50 * t
-			y = 20 - 40.0 / 50 * t
-			z_k.append([x, y])
-
-			x = 10 - 30.0 / 50 * t
-			y = 20 - 30.0 / 50 * t
-			z_k.append([x, y])
-
-			x = - 10 + 30.0 / 50 * t
-			y = - 20 + 30.0 / 50 * t
-			z_k.append([x, y])
-
-		else:
-
-			beta = np.pi/100
-
-			r = 10
-
-			# circles
-			x = 10 + r*np.cos(t*beta + np.pi)
-			y = 10 + r*np.sin(t*beta + np.pi)
-			target = [x, y]
-			# plot_track(target)
-			z_k.append(target)
-
-			# circles
-			x = -10 + r*np.cos(t*beta)
-			y = 10 + r*np.sin(t*beta)
-			target = [x, y]
-			# plot_track(target)
-			z_k.append(target)
-
-			# circles
-			x = -10 + r*np.cos(t*beta - np.pi/4)
-			y = -10 + r*np.sin(t*beta - np.pi/4)
-			target = [x, y]
-			# plot_track(target)
-			z_k.append(target)
-
-			# circles
-			x = 10 + r*np.cos(t*beta + np.pi/2)
-			y = -10 + r*np.sin(t*beta + np.pi/2)
-			target = [x, y]
-			# plot_track(target)
-			z_k.append(target)
-
+		point = [40 - 2.2 * t, 20]
+		point = [max(-25, 40 - 1.6 * t), 20]
+		z_k.append(point)
 		# 3. some noises
 		noise_k = []
-		if isFalseAlarm:
-			for i in range(random.randint(1, 5)):
-				ran_point = [40* random.random() -20, 40* random.random()-20]
-				noise_k.append(ran_point)
+		# if isFalseAlarm:
+		# 	for i in range(random.randint(1, 5)):
+		# 		ran_point = [40* random.random() -20, 40* random.random()-20]
+		# 		noise_k.append(ran_point)
 		return z_k, noise_k

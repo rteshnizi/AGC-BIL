@@ -70,3 +70,13 @@ obs.json
 
 }
 ```
+
+# update in 14/11/2020
+
+Scenario defined inside the map created by @Anant. Target tracking generated based on the
+map. To run the target tracking part, please run 
+
+```$ python3 main.py ttl (scenario number)```
+
+2 scenarios are defined, thus the scenario number is either 1 or 2.
+Data is saved in `data/obs.json` with video named `Scenario_x_Visual.mp4`.
