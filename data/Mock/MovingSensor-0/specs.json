@@ -1,8 +1,27 @@
 {
 	"simple": {
-		"specifier": ["t0", "r38", "r72"],
+		"specifier": ["T0", "A", "B"],
 		"symbols": {
-			"t0": 0.1
+			"T0": {
+				"type": "time",
+				"value": "*"
+			},
+			"A": {
+				"type": "region",
+				"value": [
+					[0, 0],
+					[0, 50],
+					[50, 0]
+				]
+			},
+			"B": {
+				"type": "region",
+				"value": [
+					[-10, 0],
+					[-10, -50],
+					[-60, 0]
+				]
+			}
 		}
 	}
 }

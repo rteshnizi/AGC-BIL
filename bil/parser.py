@@ -5,10 +5,10 @@ import os
 
 from bil.model.featureMap import FeatureMap
 from bil.model.map import Map
+from bil.spec.specification import Specification
 from bil.model.observation import Observation
 from bil.model.agent import Agent
 from bil.model.teamMember import TeamMember
-from bil.model.observation import Observation
 
 class Parser(ABC):
 	def __init__(self, dirAbsPath):
@@ -138,6 +138,9 @@ class SpecParser(Parser):
 		A dict `(observations, agents)`
 		Stories are sensor readings, Agents are sensor locations
 		"""
+		specs = []
 		with open(self._specsPath, 'r') as jsonFile:
-			parsedObservation = json.load(jsonFile)
-			i = 0
+			specsJson = json.load(jsonFile)
+		for specName in specsJson:
+			specs.append(Specification(specsJson[specName]))
+		return specs

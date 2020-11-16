@@ -16,23 +16,24 @@ class Bil(object):
 			self.obsParser = ObservationParser(self.mockDataDir)
 			(self.scenario.observations, self.scenario.agents) = self.obsParser.parse(self.map, self.scenario.fov)
 		self.specParser = SpecParser(self.mockDataDir)
-		# self.spec = self.specParser.parse()
-		self.spec = ["r38", "r72"]
-		self.app = App(self.scenario, self.emulateUpdates, self.spec)
+		self.specs = self.specParser.parse()
+		# self.spec = ["r38", "r72"]
+		self.app = App(self.scenario, self.emulateUpdates, self.specs[0])
 
 	def run(self):
 		self.app.mainloop()
 
 	def emulateUpdates(self):
-		for s in self.scenario.observations.values():
-			isValid = s.trajectory.validate(self.map)
+		for observation in self.scenario.observations.values():
+			isValid = observation.trajectory.validate(self.map)
 			if not isValid:
-				print("Trajectory of agent %s is invalid" % s.agent.name)
+				print("Trajectory of agent %s is invalid" % observation.agentName)
 				return
-			print("validating specification %s against agent %s" % (repr(self.spec), s.agent.name))
-			# isValid = s.validate(self.map, self.fov, verbose=False)
-			isValid = s.validateWithSpecification(self.map, self.scenario.fov, self.spec)
-			print("The specification %s is %s" % (repr(self.spec), "valid" if isValid else "invalid"))
+			for spec in self.specs:
+				print("validating specification %s against agent %s" % (repr(spec), observation.agentName))
+				# isValid = observation.validate(self.map, self.fov, verbose=False)
+				isValid = observation.validateWithSpecification(self.map, self.scenario.fov, spec)
+				print("The specification %s is %s" % (repr(spec), "valid" if isValid else "invalid"))
 
 	def update(self, data):
 		print("BIL says: %s" % repr(data))

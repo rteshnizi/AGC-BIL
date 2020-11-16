@@ -43,6 +43,7 @@ class App(tk.Frame):
 		self.canvas = Canvas(master=self.frame, app=self, row=2, col=0)
 		self._renderScenario()
 		self._renderTrajectories()
+		self._renderSpec()
 		self.lastDisplayedGraph = None
 
 	def _renderScenario(self):
@@ -57,6 +58,9 @@ class App(tk.Frame):
 		if self.shouldRenderTrajectory: return
 		for storyName in self.scenario.observations:
 			self.scenario.observations[storyName].clear(self.canvas.tkCanvas)
+
+	def _renderSpec(self):
+		self.spec.render(self.canvas.tkCanvas)
 
 	@property
 	def _fovLabel(self):

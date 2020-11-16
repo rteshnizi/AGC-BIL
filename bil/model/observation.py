@@ -14,7 +14,7 @@ class Observation:
 	def __init__(self, agentName, trajectoryData, envMap: Map, valid: list=None):
 		self.agentName = agentName
 		self.trajectory = Trajectory("T%s" % self.agentName, trajectoryData)
-		if valid is not None: self.sensed = self.trajectory.clip(valid)
+		self.sensed = self.trajectory.clip(valid) if valid is not None else self.trajectory
 		self.groundTruth: list = None
 		self._circleIds = []
 
