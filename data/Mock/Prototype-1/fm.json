@@ -1,0 +1,174 @@
+{
+  
+  "Edges": [
+    { "EndNodes": [ "BallPark", "Obstacle 11" ] },
+    { "EndNodes": [ "BallPark", "Obstacle 21" ] },
+    { "EndNodes": [ "BallPark", "Obstacle 31" ] },
+    { "EndNodes": [ "BallPark", "Rest Area 11" ] },
+    { "EndNodes": [ "BallPark", "Rest Area 21" ] }
+  ],
+  "Nodes": [
+    {
+      "Name": "BallPark",
+      "zl": 0,
+      "feature": {
+        "x": [ -50, 50, 50, -50 ],
+        "y": [ -50, -50, 50, 50 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 100 },
+        "easy2Cross": {
+          "pedestrian": 100,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ -50, -50 ],
+          [ 50, -50 ],
+          [ 50, 50 ],
+          [ -50, 50 ]
+        ]
+      }
+    },
+    {
+      "Name": "Obstacle 11",
+      "zl": 1,
+      "feature": {
+        "x": [ -50, -30, -30, -50 ],
+        "y": [ -20, -20, 0, 0 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 5,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ -50, -20 ],
+          [ -30, -20 ],
+          [ -30, 0 ],
+          [ -50, 0 ]
+        ]
+      }
+    },
+    {
+      "Name": "Obstacle 21",
+      "zl": 1,
+      "feature": {
+        "x": [ 35, 50, 50, 35 ],
+        "y": [ -20, -20, -5, -5 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 35, -20 ],
+          [ 50, -20 ],
+          [ 50, -5 ],
+          [ 35, -5 ]
+        ]
+      }
+    },
+    {
+      "Name": "Obstacle 31",
+      "zl": 1,
+      "feature": {
+        "x": [ 0, 15, 15, 0 ],
+        "y": [ -20, -20, 0, 0 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 0, -20 ],
+          [ 15, -20 ],
+          [ 15, 0 ],
+          [ 0, 0 ]
+        ]
+      }
+    },
+    {
+      "Name": "Rest Area 11",
+      "zl": 1,
+      "feature": {
+        "x": [ -50, -50, 50, 50, 35, 35, 50, 50, 15, 15, 0 ],
+        "y": [ -20, -50, -50, -20, -20, -5, -5, 0, 0, -20, -20 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 100 },
+        "easy2Cross": {
+          "pedestrian": 100,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ -50, -20 ],
+          [ -50, -50 ],
+          [ 50, -50 ],
+          [ 50, -20 ],
+          [ 35, -20 ],
+          [ 35, -5 ],
+          [ 50, -5 ],
+          [ 50, 0 ],
+          [ 15, 0 ],
+          [ 15, -20 ],
+          [ 0, -20 ]
+        ]
+      }
+    },
+    {
+      "Name": "Rest Area 21",
+      "zl": 1,
+      "feature": {
+        "x": [ -50, -30, -30, 0, 0, 15, 50, 50, -50 ],
+        "y": [ -0, 0, -20, -20, 0, 0, 0, 50, 50 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 100 },
+        "easy2Cross": {
+          "pedestrian": 100,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ -50, -0 ],
+          [ -30, 0 ],
+          [ -30, -20 ],
+          [ 0, -20 ],
+          [ 0, 0 ],
+          [ 15, 0 ],
+          [ 50, 0 ],
+          [ 50, 50 ],
+          [ -50, 50 ]
+        ]
+      }
+    }
+  ]
+}

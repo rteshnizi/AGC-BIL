@@ -1,27 +1,15 @@
 {
 	"simple": {
-		"specifier": ["T0", "A", "B"],
-		"symbols": {
-			"T0": {
-				"type": "time",
-				"value": "*"
-			},
-			"A": {
-				"type": "region",
-				"value": [
-					[0, 0],
-					[0, 50],
-					[50, 0]
-				]
-			},
-			"B": {
-				"type": "region",
-				"value": [
-					[-10, 0],
-					[-10, -50],
-					[-60, 0]
-				]
-			}
+		"states": ["START", "S-0", "S-1", "END"],
+		"transitions": {
+			"START": ["((T0, False), S-0)"],
+			"S-0": ["((A, True), S-1)", "((A, False), S-1)"],
+			"S-1": ["((B, True), END)"]
+		},
+		"actions": {
+			"A": "lambda p : Geometry.isInside(p, [[55, -20], [65, -20], [65, -30], [55, -30]])",
+			"B": "lambda p : Geometry.isInside(p, [[-77, -20], [-87, -20], [-87, -30], [-77, -30]])",
+			"T0": "lambda p : True"
 		}
 	}
 }

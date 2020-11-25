@@ -6,7 +6,8 @@ import os
 from bil.model.featureMap import FeatureMap
 from bil.model.map import Map
 from bil.spec.specification import Specification
-from bil.model.observation import Observation
+from bil.model.observationOld import ObservationOld
+from bil.model.observations import Observations
 from bil.model.agent import Agent
 from bil.model.teamMember import TeamMember
 
@@ -59,7 +60,7 @@ class ObservationParser(Parser):
 		self._pointsKey = "Datap"
 		self._fovKey = "FoV"
 
-	def parse(self, envMap, fov):
+	def _parse(self, envMap, fov):
 		"""
 		Returns
 		===
@@ -78,7 +79,7 @@ class ObservationParser(Parser):
 				agent = Agent(idNum)
 				trajectoryData = entity["Datap"]
 				valid = entity["valid"]
-				s = Observation(agent, trajectoryData, envMap, valid)
+				s = ObservationOld(agent, trajectoryData, envMap, valid)
 				observations[agent.agentId] = s
 			# An AGC member
 			else:
@@ -95,6 +96,34 @@ class ObservationParser(Parser):
 					fov.append(coords, entity["Datap"][i][0], agentIndex=len(agents) - 1)
 		return (observations, agents)
 
+	def parse(self, envMap, fov):
+		"""
+		Returns
+		===
+		A tuple `(observations, sens)`
+		Stories are sensor readings, Agents are sensor locations
+		"""
+		with open(self._observationsJsonPath, 'r') as jsonFile:
+			parsedObservation = json.load(jsonFile)
+		agentNum = 0
+		idNum = 0
+		observations = Observations()
+		for entity in parsedObservation:
+			idNum += 1
+			# Not a team member
+			if "valid" in entity:
+				trajectoryData = entity["Datap"]
+				valid = entity["valid"]
+				for i in range(len(trajectoryData)):
+					if valid[i] == 1:
+						observations.appendTrack(idNum, trajectoryData[i])
+			# An AGC member
+			else:
+				# FIXME: right now it's duplicated in _parse which is also beng called
+				pass
+		observations.mapFov(fov)
+		return observations
+
 	def parseNew(self, envMap, fov):
 		"""
 		Returns
@@ -110,7 +139,7 @@ class ObservationParser(Parser):
 			if self._trackIdKey in entity:
 				trackId = entity[self._trackIdKey]
 				trajectoryData = entity[self._pointsKey]
-				obs = Observation(trackId, trajectoryData, envMap)
+				obs = ObservationOld(trackId, trajectoryData, envMap)
 				observations[trackId] = obs
 			# An AGC member
 			else:
@@ -142,5 +171,5 @@ class SpecParser(Parser):
 		with open(self._specsPath, 'r') as jsonFile:
 			specsJson = json.load(jsonFile)
 		for specName in specsJson:
-			specs.append(Specification(specsJson[specName]))
+			specs.append(Specification(specName, specsJson[specName]))
 		return specs

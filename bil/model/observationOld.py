@@ -7,7 +7,7 @@ from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
 from bil.gui.drawing import Drawing
 
-class Observation:
+class ObservationOld:
 	"""
 	This object contains sensed information
 	"""

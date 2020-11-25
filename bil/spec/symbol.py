@@ -1,17 +1,24 @@
 from bil.model.polygonalRegion import PolygonalRegion
+import re as RegEx
+import json
 
-class SpecSymbol(object):
-	def __init__(self, name, symbolDict):
-		self.REGION_TYPE = "region"
-		self._symbolDict = symbolDict
+class SpecAction(object):
+	def __init__(self, name, symbolFunc):
 		self.name = name
-		self.type = symbolDict["type"]
 		# for Time, value is a float
-		self.value = symbolDict["value"]
+		self.function = symbolFunc
 		# for Region, value is a polygonalRegion
-		if self.type == self.REGION_TYPE:
-			self.value = PolygonalRegion("sym-%s" % self.name, self.value, "BLUE")
+		if self.isRegion:
+			m = RegEx.search(r"(\[[\d,\s\[\]-]*\])", self.function)
+			pts = m.group(0)
+			pts = json.loads(pts)
+			self.value = PolygonalRegion("sym-%s" % self.name, pts, "BLUE")
+		else:
+			pass
 
 	@property
 	def isRegion(self):
-		return self.type == self.REGION_TYPE
+		"""
+		FIXME: Just for the sake of debugging, anything beginning with T is a time specifier, other symbols are regions
+		"""
+		return not self.name.startswith("T")

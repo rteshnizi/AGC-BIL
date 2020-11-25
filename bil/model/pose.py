@@ -7,3 +7,6 @@ class Pose:
 		self.y = y
 		self.angleFromX = angleFromX
 		self.pt = Point(x, y)
+
+	def __repr__(self):
+		return "(%.2f, %.2f, %.2f)" % (self.time, self.x, self.y)

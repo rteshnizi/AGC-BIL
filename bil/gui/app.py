@@ -5,6 +5,7 @@ from tkinter import filedialog
 
 from bil.gui.canvas import Canvas
 from bil.model.timedGraph import TimedGraph
+from bil.model.trajectory import Trajectory
 from bil.utils.graph import GraphAlgorithms
 
 class App(tk.Frame):
@@ -41,23 +42,23 @@ class App(tk.Frame):
 		self.createButtons()
 		self.createDebugOptions()
 		self.canvas = Canvas(master=self.frame, app=self, row=2, col=0)
-		self._renderScenario()
+		self._renderMap()
 		self._renderTrajectories()
 		self._renderSpec()
 		self.lastDisplayedGraph = None
 
-	def _renderScenario(self):
+	def _renderMap(self):
 		self.scenario.map.render(self.canvas.tkCanvas)
 
 	def _renderTrajectories(self):
 		if not self.shouldRenderTrajectory: return
-		for storyName in self.scenario.observations:
-			self.scenario.observations[storyName].render(self.canvas.tkCanvas)
+		for storyName in self.scenario.observationOlds:
+			self.scenario.observationOlds[storyName].render(self.canvas.tkCanvas)
 
 	def _clearTrajectories(self):
 		if self.shouldRenderTrajectory: return
-		for storyName in self.scenario.observations:
-			self.scenario.observations[storyName].clear(self.canvas.tkCanvas)
+		for storyName in self.scenario.observationOlds:
+			self.scenario.observationOlds[storyName].clear(self.canvas.tkCanvas)
 
 	def _renderSpec(self):
 		self.spec.render(self.canvas.tkCanvas)

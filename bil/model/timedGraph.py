@@ -4,7 +4,7 @@ from shapely.geometry import LineString, Point, Polygon
 from typing import List, Set, Dict
 import time
 
-from bil.model.observation import Observation
+from bil.model.observationOld import ObservationOld
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.shadowRegion import ShadowRegion
 from bil.model.connectivityGraph import ConnectivityGraph

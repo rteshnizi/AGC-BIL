@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from shapely.geometry import LineString, Point, Polygon
 from typing import List, Set, Dict
 
-from bil.model.observation import Observation
+from bil.model.observationOld import ObservationOld
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.shadowRegion import ShadowRegion
 from bil.utils.geometry import Geometry
@@ -26,6 +26,9 @@ class ConnectivityGraph(nx.DiGraph):
 		self._condensed = None
 		self.nodeClusters: Dict[str, Set[str]] = {}
 		self.nodeToClusterMap: Dict[str, str] = {}
+
+	def __repr__(self):
+		return "cGraph-%.2f" % self.timestamp
 
 	def condense(self, spec):
 		if self._condensed is not None: return self._condensed
