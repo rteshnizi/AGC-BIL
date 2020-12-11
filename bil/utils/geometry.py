@@ -1,10 +1,23 @@
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import cascaded_union
 from typing import List
-from math import sqrt, cos, sin
+from math import sqrt, cos, sin, atan2, degrees
+from functools import reduce
+import operator
 
 class Geometry:
 	EPSILON = 0.01
+
+	@staticmethod
+	def sortCoordinatesClockwise(coords: list):
+		"""
+		(x,y)
+
+		coords = [(0, 1), (1, 0), (1, 1), (0, 0)]
+		"""
+		center = tuple(map(operator.truediv, reduce(lambda x, y: map(operator.add, x, y), coords), [len(coords)] * 2))
+		sortedCoords = sorted(coords, key=lambda coord: (-135 - degrees(atan2(*tuple(map(operator.sub, coord, center))[::-1]))) % 360)
+		return sortedCoords
 
 	@staticmethod
 	def isLineSegment(l: LineString) -> bool:
@@ -130,7 +143,8 @@ class Geometry:
 
 	@staticmethod
 	def commonEdge(p1: Polygon, p2: Polygon):
-		if p1.touches(p2):
-			r = p1.boundary.intersection(p2.boundary)
+		# if p1.touches(p2):
+		r = p1.boundary.intersection(p2.boundary)
+		if isinstance(r, LineString):
 			return r if r.length > 0 else None
 		return None

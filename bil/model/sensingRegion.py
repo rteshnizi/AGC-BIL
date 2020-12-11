@@ -4,8 +4,8 @@ from bil.utils.geometry import Geometry
 COLOR_PALETTE = ["Green", "Purple", "Gold"]
 
 class SensingRegion(PolygonalRegion):
-	def __init__(self, name, coords, timestamp, agentIndex):
-		super().__init__(name, coords, COLOR_PALETTE[agentIndex])
+	def __init__(self, name, coords, timestamp, idNum):
+		super().__init__(name, coords, COLOR_PALETTE[idNum])
 		self.timestamp = timestamp
 		self._renderLineWidth = 4
 

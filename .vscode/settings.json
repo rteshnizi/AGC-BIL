@@ -1,7 +1,8 @@
 {
     "cSpell.words": [
         "Reza",
-        "Tianqi"
+        "Tianqi",
+        "fovs"
     ],
     "python.autoComplete.extraPaths": [
         "/home/agc2/catkin_ws/devel/lib/python3/dist-packages",

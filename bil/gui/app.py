@@ -9,12 +9,12 @@ from bil.model.trajectory import Trajectory
 from bil.utils.graph import GraphAlgorithms
 
 class App(tk.Frame):
-	def __init__(self, scenario, validateCallback, spec):
-		self.scenario = scenario
+	def __init__(self, bil, validateCallback, spec):
+		self.bil = bil
 		self.spec = spec
 		# This is the method to call when validate button is clicked
 		self._validateCallback = validateCallback
-		self.timeSteps = len(self.scenario.fov) - 1
+		self.timeSteps = len(self.bil.observations) - 1
 		self.master = tk.Tk()
 		self.master.title("Canvas")
 		self.master.geometry("1000x900")
@@ -48,17 +48,19 @@ class App(tk.Frame):
 		self.lastDisplayedGraph = None
 
 	def _renderMap(self):
-		self.scenario.map.render(self.canvas.tkCanvas)
+		self.bil.map.render(self.canvas.tkCanvas)
 
 	def _renderTrajectories(self):
 		if not self.shouldRenderTrajectory: return
-		for storyName in self.scenario.observationOlds:
-			self.scenario.observationOlds[storyName].render(self.canvas.tkCanvas)
+		trajectories = self.bil.observations.trajectories
+		for trajectory in trajectories:
+			trajectory.render(self.canvas.tkCanvas)
 
 	def _clearTrajectories(self):
 		if self.shouldRenderTrajectory: return
-		for storyName in self.scenario.observationOlds:
-			self.scenario.observationOlds[storyName].clear(self.canvas.tkCanvas)
+		trajectories = self.bil.observations.trajectories
+		for trajectory in trajectories:
+			trajectory.clear(self.canvas.tkCanvas)
 
 	def _renderSpec(self):
 		self.spec.render(self.canvas.tkCanvas)
@@ -80,15 +82,15 @@ class App(tk.Frame):
 		self._renderFOV()
 
 	def _clearFOV(self):
-		self.scenario.fov.clearRender(self.canvas.tkCanvas)
-		for p in self.scenario.fov.cGraphs[self._fovIndex]._disjointPolys:
+		self.bil.fieldOfView.clearRender(self.canvas.tkCanvas)
+		for p in self.bil.fieldOfView.cGraphs[self._fovIndex]._disjointPolys:
 			p.clearRender(self.canvas.tkCanvas)
 
 	def _renderFOV(self):
 		if not self.shouldShowFOV: return
-		for region in self.scenario.fov[self._fovIndex]:
+		for region in self.bil.fieldOfView[self._fovIndex]:
 			region.render(self.canvas.tkCanvas)
-		for p in self.scenario.fov.cGraphs[self._fovIndex]._disjointPolys:
+		for p in self.bil.fieldOfView.cGraphs[self._fovIndex]._disjointPolys:
 			p.render(self.canvas.tkCanvas)
 
 	@property
@@ -112,7 +114,7 @@ class App(tk.Frame):
 		return self._dbg["Display Spring Graph"].get() == 1
 
 	def showGraph(self):
-		self.lastDisplayedGraph = self.scenario.fov.cGraphs[self._fovIndex]
+		self.lastDisplayedGraph = self.bil.fieldOfView.cGraphs[self._fovIndex]
 		self.lastDisplayedGraph.displayGraph(displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def _changeFov(self, showNext: bool):
@@ -130,11 +132,11 @@ class App(tk.Frame):
 		self._changeFov(False)
 
 	def chainGraphs(self):
-		chained = TimedGraph(self.scenario.fov.cGraphs, self.spec, self._fovIndex, self._fovIndex + 2)
+		chained = TimedGraph(self.bil.fieldOfView.cGraphs, self.spec, self._fovIndex, self._fovIndex + 2)
 		GraphAlgorithms.displayGraphAuto(chained, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def chainAll(self):
-		GraphAlgorithms.displayGraphAuto(self.scenario.fov.chainedGraphThroughTime(self.spec), displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
+		GraphAlgorithms.displayGraphAuto(self.bil.fieldOfView.chainedGraphThroughTime(self.spec), displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def _createButton(self, row, col, text, callback):
 		tk.Grid.columnconfigure(self.frame, col, weight=1)
@@ -185,7 +187,7 @@ class App(tk.Frame):
 			column += 1
 
 	def condenseGraph(self):
-		condensed = self.scenario.fov.cGraphs[self._fovIndex].condense(self.spec)
+		condensed = self.bil.fieldOfView.cGraphs[self._fovIndex].condense(self.spec.nfa)
 		GraphAlgorithms.displayGraphAuto(condensed, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def validate(self):

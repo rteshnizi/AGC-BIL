@@ -37,11 +37,11 @@ class FieldOfView:
 			self._chainedGraphThroughTime = TimedGraph(self.cGraphs, spec)
 		return self._chainedGraphThroughTime
 
-	def append(self, region, timestamp, agentIndex):
+	def append(self, region, timestamp, sensorId):
 		if timestamp not in self.regions:
 			self._timestamps[len(self._timestamps)] = timestamp
 			self.regions[timestamp] = []
-		self.regions[timestamp].append(SensingRegion("F%d" % (len(self.regions[timestamp])), region, timestamp, agentIndex))
+		self.regions[timestamp].append(region)
 
 	def render(self, canvas):
 		for (_, regionList) in self.regions.items():

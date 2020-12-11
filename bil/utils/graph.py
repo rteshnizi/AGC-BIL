@@ -5,6 +5,8 @@ from math import nan, isnan
 from queue import Queue
 from typing import List, Tuple
 
+from bil.model.shadowRegion import ShadowRegion
+
 class GraphAlgorithms:
 	_allFigs = set()
 
@@ -51,6 +53,13 @@ class GraphAlgorithms:
 	@staticmethod
 	def isBeamNode(n: str) -> bool:
 		return "¦|" in n
+
+	@staticmethod
+	def isShadowRegion(graph: nx.DiGraph, n: str) -> bool:
+		_isShadow = True if "type" in graph.nodes[n] and graph.nodes[n]["type"] == "s" else False
+		if _isShadow: return True
+		_isShadow = True if "region" in graph.nodes[n] and isinstance(graph.nodes[n]["region"], ShadowRegion) else False
+		return _isShadow
 
 	@staticmethod
 	def getBeamEnds(n: str) -> Tuple[str, str]:

@@ -1,4 +1,4 @@
-from bil.spec.symbol import SpecAction
+from bil.spec.validator import Validator
 from bil.spec.nfa import NFA
 
 class Specification(object):
@@ -8,7 +8,7 @@ class Specification(object):
 		self._shapeIds = None
 		self._regionSymbols = []
 		self._symbolMap = self._buildSymbolMap()
-		self.nfa = NFA(self.states, self.transitions, self._symbolMap)
+		self.nfa = NFA(self.name, self.states, self.transitions, self._symbolMap)
 		self.nfa.displayGraph()
 
 	@property
@@ -20,16 +20,16 @@ class Specification(object):
 		return self._specificationDict["transitions"]
 
 	@property
-	def _actionsDefs(self):
-		return self._specificationDict["actions"]
+	def _validatorsDefs(self):
+		return self._specificationDict["validators"]
 
 	def __repr__(self):
-		return "NFA-%s" % self.name
+		return "SPEC-%s" % self.name
 
 	def _buildSymbolMap(self):
 		symbols = {}
-		for symName in self._actionsDefs:
-			symbols[symName] = SpecAction(symName, self._actionsDefs[symName])
+		for symName in self._validatorsDefs:
+			symbols[symName] = Validator(symName, self._validatorsDefs[symName])
 			if symbols[symName].isRegion: self._regionSymbols.append(symName)
 		return symbols
 

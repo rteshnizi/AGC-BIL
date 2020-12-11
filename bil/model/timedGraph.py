@@ -36,12 +36,12 @@ class TimedGraph(nx.DiGraph):
 			layerIndex = len(self.nodeLayers)
 			self.nodeLayers.append([])
 			print ("Chaining for %.1f" % g.timestamp)
-			gDense = g.condense(spec)
+			gDense = g.condense(spec.nfa)
 			for n in gDense.nodes:
 				newNode = GraphAlgorithms._getTimedNodeName(n, g.timestamp)
 				self.add_node(newNode)
 				n = n if n in g.nodes else gDense.nodes[n]["mappedName"]
-				GraphAlgorithms.cloneNodeProps(g.nodes[n], self.nodes[newNode])
+				GraphAlgorithms.cloneNodeProps(g.nodes[n] if not n.startswith("sym") else gDense.nodes[n], self.nodes[newNode])
 				self.nodes[newNode]["polygonName"] = n # This is lazy way to obtain the name of the polygon without doing string split etc.
 				self.nodes[newNode]["cluster"] = g.nodeClusters[g.nodeToClusterMap[n]]
 				self.nodeLayers[layerIndex].append(newNode)

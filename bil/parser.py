@@ -3,13 +3,18 @@ from typing import Tuple
 import json
 import os
 
+from bil.observation.observations import Observations, Observation
+from bil.observation.fov import FOV
+from bil.observation.pose import Pose
+from bil.observation.sensor import Sensor
+from bil.observation.track import Track
 from bil.model.featureMap import FeatureMap
-from bil.model.map import Map
-from bil.spec.specification import Specification
-from bil.model.observationOld import ObservationOld
-from bil.model.observations import Observations
 from bil.model.agent import Agent
+from bil.model.map import Map
+from bil.model.observationOld import ObservationOld
+from bil.model.sensingRegion import SensingRegion
 from bil.model.teamMember import TeamMember
+from bil.spec.specification import Specification
 
 class Parser(ABC):
 	def __init__(self, dirAbsPath):
@@ -54,13 +59,8 @@ class ObservationParser(Parser):
 	def __init__(self, dirAbsPath):
 		super().__init__(dirAbsPath)
 		self._observationsJsonPath = os.path.abspath(os.path.join(self._dirAbsPath, "obs.json"))
-		self._obsTianqiJsonPath = os.path.abspath(os.path.join(self._dirAbsPath, "obs-tianqi.json"))
-		self._agentIdKey = "AgentID"
-		self._trackIdKey = "trackID"
-		self._pointsKey = "Datap"
-		self._fovKey = "FoV"
 
-	def _parse(self, envMap, fov):
+	def parse(self, envMap, fov):
 		"""
 		Returns
 		===
@@ -96,63 +96,44 @@ class ObservationParser(Parser):
 					fov.append(coords, entity["Datap"][i][0], agentIndex=len(agents) - 1)
 		return (observations, agents)
 
-	def parse(self, envMap, fov):
-		"""
-		Returns
-		===
-		A tuple `(observations, sens)`
-		Stories are sensor readings, Agents are sensor locations
-		"""
-		with open(self._observationsJsonPath, 'r') as jsonFile:
-			parsedObservation = json.load(jsonFile)
-		agentNum = 0
-		idNum = 0
-		observations = Observations()
-		for entity in parsedObservation:
-			idNum += 1
-			# Not a team member
-			if "valid" in entity:
-				trajectoryData = entity["Datap"]
-				valid = entity["valid"]
-				for i in range(len(trajectoryData)):
-					if valid[i] == 1:
-						observations.appendTrack(idNum, trajectoryData[i])
-			# An AGC member
-			else:
-				# FIXME: right now it's duplicated in _parse which is also beng called
-				pass
-		observations.mapFov(fov)
-		return observations
-
-	def parseNew(self, envMap, fov):
+	def parseNew(self):
 		"""
 		Returns
 		===
 		A tuple `observations`
 		Stories are sensor readings, Agents are sensor locations
 		"""
-		with open(self._obsTianqiJsonPath, 'r') as jsonFile:
-			parsedObservation = json.load(jsonFile)
-		observations = {}
-		for entity in parsedObservation:
-			# Not a team member
-			if self._trackIdKey in entity:
-				trackId = entity[self._trackIdKey]
-				trajectoryData = entity[self._pointsKey]
-				obs = ObservationOld(trackId, trajectoryData, envMap)
-				observations[trackId] = obs
-			# An AGC member
-			else:
-				agentId = entity[self._agentIdKey]
-				# The FOV list contains field of view per timestamp
-				# For each timestamp, it contains a list of individual FOVs per sensor on the vehicle
-				# Each FOV per sensor has 2 lists: [x1, x2, x3, ...],[y1, y2, y3, ...]
-				for i in range(len(entity[self._fovKey])):
-					# FIXME: For now there is only one sensor per vehicle, we might have to union them later
-					xs = entity[self._fovKey][i][0][0]
-					ys = entity[self._fovKey][i][0][1]
-					coords = [[xs[j], ys[j]] for j in range(len(xs))]
-					fov.append(coords, entity[self._pointsKey][i][0], agentIndex=agentId)
+		with open(self._observationsJsonPath, 'r') as jsonFile:
+			rawObservations = json.load(jsonFile)
+		observations = Observations()
+		# FIXME: Once we process multiple agents, this should change
+		lastTrack = None
+		for rawObservation in rawObservations:
+			tracks = {}
+			# for deletedTrack in rawObservation["deletedTracks"]:
+			# 	tracks[deletedTrack].peek.vanished = True
+			for rawTrack in rawObservation["tracks"]:
+				idNum = 1 # FIXME: 1 below is the default ID because we don't trust TTL ids
+				tracks[(rawObservation["t"], idNum)] = Track(idNum, rawObservation["t"], rawTrack["pose"][0], rawTrack["pose"][1], rawTrack["pose"][2])
+				vanishedLastTime = lastTrack is None or lastTrack.pose.vanished
+				if vanishedLastTime:
+					tracks[(rawObservation["t"], idNum)].pose.spawn = True
+				lastTrack = tracks[(rawObservation["t"], idNum)]
+			sensors = {}
+			for rawSensor in rawObservation["sensors"]:
+				idNum = rawSensor["ID"]
+				xs = rawSensor["FoV"][0][0]
+				ys = rawSensor["FoV"][0][1]
+				coords = [[xs[j], ys[j]] for j in range(len(xs))]
+				region = SensingRegion("SR%d" % idNum, coords, rawObservation["t"], idNum)
+				fov = FOV(rawObservation["t"], rawSensor["pose"][0], rawSensor["pose"][1], rawSensor["pose"][2], region)
+				sensor = Sensor(idNum, fov)
+				sensors[(rawObservation["t"], idNum)] = sensor
+			if len(rawObservation["deletedTracks"]) > 0:
+				if lastTrack is None: print("Ignoring deleting Track %d. We can't delete a track before one exists." % rawObservation["deletedTracks"][0])
+				else: lastTrack.pose.vanished = True
+			observation = Observation(rawObservation["t"], sensors, tracks)
+			observations.addObservation(observation)
 		return observations
 
 class SpecParser(Parser):

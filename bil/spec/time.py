@@ -1,4 +1,4 @@
-from bil.model.pose import Pose
+from bil.observation.pose import Pose
 
 class TimeSpecifier:
 	def __init__(self, endPoints: list, intervalFlags: list, endPointFlags: list):

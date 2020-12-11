@@ -8,12 +8,12 @@ class PolygonalRegion:
 	def __init__(self, name, coords, boundaryColor="RED", backgroundColor=""):
 		self.name = name
 		self._renderLineWidth = 1
-		self._coordsDict = self._buildCoords(coords)
-		self._coordsList = coords
-		self.polygon = Polygon(coords)
+		self._coordsList = Geometry.sortCoordinatesClockwise(coords)
+		self._coordsDict = self._buildCoords(self._coordsList)
+		self.polygon = Polygon(self._coordsList)
 		self.BOUNDARY_COLOR = boundaryColor
 		self.BACKGROUND_COLOR = backgroundColor
-		self._edges = self._buildEdges(coords)
+		self._edges = self._buildEdges(self._coordsList)
 		self.canvasId = None
 		self.textId = None
 
