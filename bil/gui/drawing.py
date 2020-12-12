@@ -2,9 +2,9 @@ import random
 from tkinter import LAST
 from shapely.geometry import Point
 
-TRANSLATION_X = 105
-TRANSLATION_Y = 105
-SCALE = 3.75
+TRANSLATION_X = 60
+TRANSLATION_Y = 60
+SCALE = 7.2
 
 class Drawing:
 	@staticmethod

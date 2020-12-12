@@ -12,5 +12,19 @@
 			"B": "lambda p : Geometry.isInside(p, [[-77, -20], [-87, -20], [-87, -30], [-77, -30]])",
 			"T0": "lambda p : True"
 		}
+	},
+	"simple2": {
+		"states": ["START", "S-0", "S-1", "S-2", "END"],
+		"transitions": {
+			"START": ["((T0, False), S-0)"],
+			"S-0": ["((A, True), S-1)", "((A, False), S-2)"],
+			"S-1": ["((B, True), END)"],
+			"S-2": ["((B, False), S-1)"]
+		},
+		"validators": {
+			"A": "lambda p : Geometry.isInside(p, [[35, 10], [45, 10], [45, 20], [35, 20]])",
+			"B": "lambda p : Geometry.isInside(p, [[-45, 5], [-40, 5], [-40, 10], [-45, 10]])",
+			"T0": "lambda p : True"
+		}
 	}
 }

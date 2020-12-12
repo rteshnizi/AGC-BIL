@@ -21,7 +21,7 @@ class Bil(object):
 			# (self.scenario.observationOlds, self.scenario.agents) = self.obsParser.parse(self.map, self.scenario.fov)
 		self.specParser = SpecParser(self.mockDataDir)
 		self.specs = self.specParser.parse()
-		self.app = App(self, self.emulateUpdates, self.specs[0])
+		self.app = App(self, self.emulateUpdates, self.specs[1])
 
 	def addRegionsToFieldOfView(self):
 		for observationId in self.observations:
