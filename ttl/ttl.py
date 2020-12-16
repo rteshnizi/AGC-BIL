@@ -223,6 +223,7 @@ class Ttl(object):
 	def RectangleCorners(self, pos, shape):
 		# given rectangle's center position + angle, return the 4 corner's x and y
 		x, y, theta = pos
+		position = np.array([x, y])
 		width, height = shape
 		X, Y = [], []
 		vector1 = np.array([width, height]) * 0.5
@@ -231,7 +232,7 @@ class Ttl(object):
 		vector4 = np.array([-width, -height]) * 0.5
 		vectorlist = [vector1, vector2, vector3,vector4]
 		for vector in vectorlist:
-			corner = np.dot(self.RotationMatrix(theta), vector)
+			corner = np.dot(self.RotationMatrix(theta), vector) + position
 			X.append(corner[0,0])
 			Y.append(corner[0,1])
 		return X, Y
