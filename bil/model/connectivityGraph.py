@@ -154,8 +154,10 @@ class ConnectivityGraph(nx.DiGraph):
 			if Geometry.polygonAndPolygonIntersect(mapR.polygon, fovUnion):
 				insidePolys = Geometry.intersect(mapR.polygon, fovUnion)
 				insidePolys = [p for p in insidePolys if p.length > 0]
+				insidePolys = list(filter(lambda p: not isinstance(p, LineString), insidePolys))
 				shadows = Geometry.nonOverlapping(mapR.polygon, fovUnion)
 				shadows = [p for p in shadows if p.length > 0]
+				shadows = list(filter(lambda p: not isinstance(p, LineString), shadows))
 				self._disjointPolys += [PolygonalRegion("%s-%d" % (mapR.name, i), list(zip(*(insidePolys[i].exterior.coords.xy)))) for i in range(len(insidePolys))]
 				self._disjointPolys += [ShadowRegion("%s-%d" % (mapR.name, i + len(insidePolys)), list(zip(*(shadows[i].exterior.coords.xy)))) for i in range(len(shadows))]
 			else:

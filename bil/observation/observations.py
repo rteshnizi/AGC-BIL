@@ -14,6 +14,7 @@ class Observation:
 class Observations:
 	def __init__(self):
 		self._dict: Dict[float, Observation] = {}
+		self.timeArray = []
 		self._trajectories = None
 		self._fieldOfView = None
 
@@ -44,4 +45,5 @@ class Observations:
 
 	def addObservation(self, observation: Observation):
 		if observation.time in self._dict: raise RuntimeError("Repeated observation timestamp.")
+		self.timeArray.append(observation.time)
 		self._dict[observation.time] = observation

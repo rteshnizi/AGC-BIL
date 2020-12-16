@@ -20,7 +20,7 @@ class Trajectory:
 		self._circleIds = []
 		self._arrowIds = []
 
-	def render(self, canvas):
+	def render(self, canvas, time=None):
 		if self._lineIds is not None: return
 		self._lineIds = []
 		spawnColor = "GREEN"
@@ -36,7 +36,9 @@ class Trajectory:
 				linePoses = []
 			else:
 				fillColor = ""
-			self._circleIds.append(Drawing.CreateCircle(canvas, p.x, p.y, radius=5, outline=self.MARKING_COLOR, tag="%s-%.1f" % (self.name, p.time), fill=fillColor))
+			poseIsActive = p.time == time
+			if time is None or poseIsActive:
+				self._circleIds.append(Drawing.CreateCircle(canvas, p.x, p.y, radius=5, outline=self.MARKING_COLOR, tag="%s-%.1f" % (self.name, p.time), fill=fillColor))
 			if not self.renderArrows: continue
 			(dx, dy) = Geometry.getUnitVectorFromAngle(p.angleFromX)
 			dx = dx * self.HEADING_ARROW_LENGTH

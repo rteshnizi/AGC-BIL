@@ -5,10 +5,10 @@ from bil.gui.drawing import Drawing
 from bil.utils.geometry import Geometry
 
 class PolygonalRegion:
-	def __init__(self, name, coords, boundaryColor="RED", backgroundColor=""):
+	def __init__(self, name, coords, boundaryColor="RED", backgroundColor="", sortCoordinatesClockwise=False):
 		self.name = name
 		self._renderLineWidth = 1
-		self._coordsList = Geometry.sortCoordinatesClockwise(coords)
+		self._coordsList = Geometry.sortCoordinatesClockwise(coords) if sortCoordinatesClockwise else coords
 		self._coordsDict = self._buildCoords(self._coordsList)
 		self.polygon = Polygon(self._coordsList)
 		self.BOUNDARY_COLOR = boundaryColor

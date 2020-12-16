@@ -50,19 +50,21 @@ class App(tk.Frame):
 	def _renderMap(self):
 		self.bil.map.render(self.canvas.tkCanvas)
 
-	def _renderTrajectories(self):
-		if not self.shouldRenderTrajectory: return
+	def _renderTrajectories(self, force=False):
+		if not force and not self.shouldRenderTrajectory: return
 		trajectories = self.bil.observations.trajectories
+		t = self.bil.observations.timeArray[self._fovIndex] if self.shouldShowFOV else None
 		for trajectory in trajectories:
-			trajectory.render(self.canvas.tkCanvas)
+			trajectory.render(self.canvas.tkCanvas, time=t)
 
-	def _clearTrajectories(self):
-		if self.shouldRenderTrajectory: return
+	def _clearTrajectories(self, force=False):
+		if not force and self.shouldRenderTrajectory: return
 		trajectories = self.bil.observations.trajectories
 		for trajectory in trajectories:
 			trajectory.clear(self.canvas.tkCanvas)
 
 	def _renderSpec(self):
+		self.spec.nfa.displayGraph()
 		self.spec.render(self.canvas.tkCanvas)
 
 	@property
@@ -73,12 +75,13 @@ class App(tk.Frame):
 		GraphAlgorithms.killAllDisplayedGraph()
 		self.master.destroy()
 
-	def _toggleTrajectory(self):
-		self._clearTrajectories()
-		self._renderTrajectories()
+	def _toggleTrajectory(self, force=False):
+		self._clearTrajectories(force)
+		self._renderTrajectories(force)
 
 	def _toggleFov(self):
 		self._clearFOV()
+		self._toggleTrajectory(force=True)
 		self._renderFOV()
 
 	def _clearFOV(self):
@@ -123,6 +126,7 @@ class App(tk.Frame):
 		self._fovIndex = min(self.timeSteps, self._fovIndex)
 		self._fovIndex = max(0, self._fovIndex)
 		self.fovLabel.set(self._fovLabel)
+		self._toggleTrajectory(force=True)
 		self._renderFOV()
 
 	def nextFOV(self):

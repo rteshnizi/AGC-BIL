@@ -2,6 +2,7 @@ from abc import ABC
 from typing import Tuple
 import json
 import os
+import numpy as np
 
 from bil.observation.observations import Observations, Observation
 from bil.observation.fov import FOV
@@ -123,9 +124,11 @@ class ObservationParser(Parser):
 			for rawSensor in rawObservation["sensors"]:
 				idNum = rawSensor["ID"]
 				xs = rawSensor["FoV"][0][0]
+				xs = list(np.array(xs) + rawSensor["pose"][0]) # Temporary fix
 				ys = rawSensor["FoV"][0][1]
+				ys = list(np.array(ys) + rawSensor["pose"][1]) # Temporary fix
 				coords = [[xs[j], ys[j]] for j in range(len(xs))]
-				region = SensingRegion("SR%d" % idNum, coords, rawObservation["t"], idNum)
+				region = SensingRegion("SR%d" % idNum, coords, rawObservation["t"], idNum, sortCoordinatesClockwise=True)
 				fov = FOV(rawObservation["t"], rawSensor["pose"][0], rawSensor["pose"][1], rawSensor["pose"][2], region)
 				sensor = Sensor(idNum, fov)
 				sensors[(rawObservation["t"], idNum)] = sensor

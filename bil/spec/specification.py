@@ -9,7 +9,6 @@ class Specification(object):
 		self._regionSymbols = []
 		self._symbolMap = self._buildSymbolMap()
 		self.nfa = NFA(self.name, self.states, self.transitions, self._symbolMap)
-		self.nfa.displayGraph()
 
 	@property
 	def states(self):
