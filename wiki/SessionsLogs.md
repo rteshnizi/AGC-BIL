@@ -80,3 +80,9 @@ map. To run the target tracking part, please run
 
 2 scenarios are defined, thus the scenario number is either 1 or 2.
 Data is saved in `data/obs.json` with video named `Scenario_x_Visual.mp4`.
+
+# update in 02/01/2020
+
+Scenario defined of the river map, tracking file named `data/obs_$scenario_num.json`, with visual of the tracking named `data/Jan22_demo_$scenario_num.json`. run the following to get it
+
+```$ python3 main.py ttl (scenario number)```
