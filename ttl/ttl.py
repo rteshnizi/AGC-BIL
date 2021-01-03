@@ -19,7 +19,7 @@ class Ttl(object):
 		self.bil = bil
 		# read sensor parameter
 		path = os.getcwd()
-		filename = os.path.join(path, 'data', 'sim_parameter.json')
+		filename = os.path.join(path, 'data', 'demo_sensor_parameter.json')
 		with open(filename) as json_file:
 			data = json.load(json_file)
 
@@ -27,16 +27,32 @@ class Ttl(object):
 		self.dt = data["dt"]
 		self.obstacles = data["obstacles"]
 		# 2. Sequantial JPDA, centralized way
-
+		self.traj = data["trajectory"]
 		self.step_num = data["run_num"]
 		
 		# 3. scenario number
 		self.scenario = scenario  # available number: 1, 2
 
+		# 4. policy for sensors
+		self.policy = {}
+		self.policy[0] = [[0, 0]] * self.step_num
+		self.policy[2] = [[0, 0]] * self.step_num
+		self.policy[1] = [[0, 0]] * self.step_num
+		if self.scenario == 1:
+			for i in range(16, 27):
+				self.policy[1][i] = [-1.5, 3.5]
+		elif self.scenario == 2:
+			for i in range(10, 16):
+				self.policy[1][i] = [-2, 4.6]
+			for i in range(17, 26):
+				self.policy[1][i] = [-0.625, 1.5]
+			for i in range(27, 30):
+				self.policy[1][i] = [5.0/3, -4]
+
 	def run(self):
 		isMoving = True
 		isObsDyn = False
-		isRotate = True
+		isRotate = False
 		isFalseAlarm = False
 
 		print("TTL sim starts")
@@ -58,15 +74,18 @@ class Ttl(object):
 
 		centralized_fusor = cenAgent(self.sensor_para_list, self.dt, 
 				isObsdyn=isObsDyn, isRotate=isRotate, isSimulation=True)
-		centralized_fusor.tracker.ConfirmationThreshold = [3, 4]
+		centralized_fusor.tracker.ConfirmationThreshold = [1, 2]
 		centralized_fusor.tracker.DeletionThreshold = [3, 5]
 
-		for t in time_set:
+		for j in range(self.step_num):
+			t = time_set[j]
 
-			true_k, noise_k = self.generate_obs(t, isFalseAlarm, isMoving)
+			# true_k, noise_k = self.generate_obs(t, isFalseAlarm, isMoving)
+
 			# true_target_set.append(true_k)
 			# noise_set.append(noise_k)
-			z_k = true_k + noise_k
+
+			z_k = [self.traj[j]]
 			# total_z.append(z_k)
 			observation_z.append(z_k)
 
@@ -90,7 +109,8 @@ class Ttl(object):
 			# move sensors
 			if isMoving:
 				# centralized_fusor.central_base_policy(ellips_inputs_k)
-				centralized_fusor.scenarioPolicy(t, self.scenario)
+				# centralized_fusor.scenarioPolicy(t, self.scenario)
+				centralized_fusor.v_list = [self.policy[0][j], self.policy[1][j], self.policy[2][j]]
 				centralized_fusor.dynamics()
 
 			# collect sensors data
@@ -107,7 +127,7 @@ class Ttl(object):
 
 			agentPos.append(copy.deepcopy(seq_sen_pos_k))
 		path = os.getcwd()
-		filename = os.path.join(path, "data", "obs.json")
+		filename = os.path.join(path, "data", "obs_"+str(self.scenario)+".json")
 		with open(filename, 'w') as outfiles:
 			json.dump(obs, outfiles, indent="\t")
 		
@@ -116,13 +136,13 @@ class Ttl(object):
 		fig = plt.figure()
 		#fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
 		ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
-							xlim=(-50, 50), ylim=(-50, 50))
+							xlim=(-5, 205), ylim=(-5, 205))
 
 		real_point, = ax.plot([], [], 'ko', ms=2)
 		# obs_list_anim = np.array(obs_list)
 		estimationPT, = ax.plot([], [], 'r*', ms=2)
 
-		timer = ax.text(-40, 40, '', fontsize = 10)
+		timer = ax.text(0, 40, '', fontsize = 10)
 		# lines stands for neighborings
 
 		def init():
@@ -213,7 +233,7 @@ class Ttl(object):
 		ani = animation.FuncAnimation(fig, animate, frames=len(agentPos),
 									interval=10, blit=True, init_func=init, repeat = False)
 		
-		filename = os.path.join(path, "data", 'Scenario_'+str(self.scenario)+'_Visual.mp4')
+		filename = os.path.join(path, "data", 'Jan22_demo_'+str(self.scenario)+'_Visual.mp4')
 		ani.save(filename, fps=20)
 		plt.close()
 
