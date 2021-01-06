@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import re as RegEx
 import json
 from bil.utils.graph import GraphAlgorithms
+from bil.utils.geometry import Geometry
 from bil.model.connectivityGraph import ConnectivityGraph
 
 class Transition:
@@ -31,6 +32,7 @@ class NFA(nx.DiGraph):
 		self.activeStates.add(self.START_SYMBOL)
 		self.visitedStates = set()
 		self._possiblePositions = set()
+		self._graphCounter = 0
 
 	def __repr__(self):
 		return "%s.NFA" % self._specName
@@ -47,8 +49,14 @@ class NFA(nx.DiGraph):
 				self.add_edge(fromState, toState, transition=transition)
 
 	def read(self, envMap, observation, prevObservation):
-		cGraph = [observation.fov[i][1] for i in observation.fov][0]
+		if len(observation.fov.sensors) == 0:
+			print("Don't know how to handle no FOV yet")
+			return
+		cGraph = ConnectivityGraph(envMap, observation.fov, self._graphCounter)
+		self._graphCounter += 1
 		condensedGraph = cGraph.condense(self)
+		GraphAlgorithms.displayGraphAuto(condensedGraph, True, True)
+		return
 		if prevObservation is None:
 			if len(observation.tracks) == 0:
 				for n in condensedGraph.nodes:

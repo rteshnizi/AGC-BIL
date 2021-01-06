@@ -36,3 +36,8 @@ class Specification(object):
 		for symName in self._regionSymbols:
 			region = self._symbolMap[symName].value
 			region.render(canvas)
+
+	def clearRender(self, canvas):
+		for symName in self._regionSymbols:
+			region = self._symbolMap[symName].value
+			region.clearRender(canvas)

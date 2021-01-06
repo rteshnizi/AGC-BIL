@@ -6,16 +6,18 @@ from tkinter import filedialog
 from bil.gui.canvas import Canvas
 from bil.model.timedGraph import TimedGraph
 from bil.model.trajectory import Trajectory
+from bil.model.fieldOfView import FieldOfViewRenderer
+from bil.model.connectivityGraph import ConnectivityGraph
 from bil.utils.graph import GraphAlgorithms
 
 class App(tk.Frame):
-	def __init__(self, bil, validateCallback, spec):
+	def __init__(self, bil, validateCallback):
 		self.bil = bil
-		self.spec = spec
 		# This is the method to call when validate button is clicked
 		self._validateCallback = validateCallback
 		self.timeSteps = len(self.bil.observations) - 1
 		self.master = tk.Tk()
+		self.fovRenderer = FieldOfViewRenderer()
 		self.master.title("Canvas")
 		self.master.geometry("1000x900")
 		self.master.protocol("WM_DELETE_WINDOW", self._onClose)
@@ -32,6 +34,8 @@ class App(tk.Frame):
 		self.fovLabel = tk.StringVar(master=self.master)
 		self._fovIndex = 0
 		self.fovLabel.set(self._fovLabel)
+		self.specDropdownValue = tk.StringVar(self.master)
+		self.specDropdownValue.set("simple-2") # set the default option
 		self._dbg = {
 			"Print Mouse": tk.IntVar(master=self.master, value=0),
 			"Render Trajectory": tk.IntVar(master=self.master, value=1),
@@ -63,8 +67,11 @@ class App(tk.Frame):
 		for trajectory in trajectories:
 			trajectory.clear(self.canvas.tkCanvas)
 
+	def _clearSpec(self):
+		self.spec.nfa.killDisplayedGraph()
+		self.spec.clearRender(self.canvas.tkCanvas)
+
 	def _renderSpec(self):
-		self.spec.nfa.displayGraph()
 		self.spec.render(self.canvas.tkCanvas)
 
 	@property
@@ -85,16 +92,24 @@ class App(tk.Frame):
 		self._renderFOV()
 
 	def _clearFOV(self):
-		self.bil.fieldOfView.clearRender(self.canvas.tkCanvas)
-		for p in self.bil.fieldOfView.cGraphs[self._fovIndex]._disjointPolys:
-			p.clearRender(self.canvas.tkCanvas)
+		self.fovRenderer.clearRender(self.canvas.tkCanvas)
 
 	def _renderFOV(self):
 		if not self.shouldShowFOV: return
-		for region in self.bil.fieldOfView[self._fovIndex]:
-			region.render(self.canvas.tkCanvas)
-		for p in self.bil.fieldOfView.cGraphs[self._fovIndex]._disjointPolys:
-			p.render(self.canvas.tkCanvas)
+		self.fovRenderer.render(self.bil.map, self.activeObservation.fov, self.canvas.tkCanvas)
+
+	def _changeFov(self, showNext: bool):
+		self._clearFOV()
+		self._fovIndex += 1 if showNext else -1
+		self._fovIndex = min(self.timeSteps, self._fovIndex)
+		self._fovIndex = max(0, self._fovIndex)
+		self.fovLabel.set(self._fovLabel)
+		self._toggleTrajectory(force=True)
+		self._renderFOV()
+
+	def _onSpecChange(self, event):
+		self._clearSpec()
+		self._renderSpec()
 
 	@property
 	def shouldPrintMouse(self) -> bool:
@@ -116,18 +131,23 @@ class App(tk.Frame):
 	def displaySpringGraph(self) -> bool:
 		return self._dbg["Display Spring Graph"].get() == 1
 
-	def showGraph(self):
-		self.lastDisplayedGraph = self.bil.fieldOfView.cGraphs[self._fovIndex]
-		self.lastDisplayedGraph.displayGraph(displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
+	@property
+	def spec(self):
+		return next(spec for spec in self.bil.specs if spec.name == self.specDropdownValue.get())
 
-	def _changeFov(self, showNext: bool):
-		self._clearFOV()
-		self._fovIndex += 1 if showNext else -1
-		self._fovIndex = min(self.timeSteps, self._fovIndex)
-		self._fovIndex = max(0, self._fovIndex)
-		self.fovLabel.set(self._fovLabel)
-		self._toggleTrajectory(force=True)
-		self._renderFOV()
+	@property
+	def activeObservation(self):
+		return self.bil.observations.getObservationByIndex(self._fovIndex)
+
+	def showSpecGraph(self):
+		self.spec.nfa.killDisplayedGraph()
+		self.spec.nfa.displayGraph()
+
+	def showGraph(self):
+		if self.lastDisplayedGraph is not None:
+			self.lastDisplayedGraph.killDisplayedGraph()
+		self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.activeObservation.fov, self._fovIndex)
+		self.lastDisplayedGraph.displayGraph(displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def nextFOV(self):
 		self._changeFov(True)
@@ -174,12 +194,19 @@ class App(tk.Frame):
 		self._createButton(row, column, "Validate", self.validate)
 		column += 1
 
+		self._createButton(row, column, "Spec Graph", self.showSpecGraph)
+		column += 1
+
 	def createDebugOptions(self):
 		tk.Grid.columnconfigure(self.frame, 0, weight=1)
 		label = tk.Label(master=self.frame, textvariable=self.fovLabel)
 		label.grid(row=1, column=0, columnspan=2)
 
-		column = 2
+		specList = [spec.name for spec in self.bil.specs]
+		popupMenu = tk.OptionMenu(self.frame, self.specDropdownValue, *specList, command=self._onSpecChange)
+		popupMenu.grid(row=1, column=2)
+
+		column = 3
 		for (text, variable) in self._dbg.items():
 			tk.Grid.columnconfigure(self.frame, column, weight=1)
 			checkbox = tk.Checkbutton(master=self.frame, text=text, variable=variable)
@@ -191,7 +218,9 @@ class App(tk.Frame):
 			column += 1
 
 	def condenseGraph(self):
-		condensed = self.bil.fieldOfView.cGraphs[self._fovIndex].condense(self.spec.nfa)
+		if self.lastDisplayedGraph is None:
+			self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.activeObservation.fov, self._fovIndex)
+		condensed = self.lastDisplayedGraph.condense(self.spec.nfa)
 		GraphAlgorithms.displayGraphAuto(condensed, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def validate(self):

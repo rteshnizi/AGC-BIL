@@ -64,5 +64,9 @@ class PolygonalRegion:
 		if renderText: self.textId = Drawing.CreateText(canvas, [self.polygon.centroid.x, self.polygon.centroid.y], self.name, tag=self.name, color="White" if self.BACKGROUND_COLOR.upper() == "BLACK" else "Black")
 
 	def clearRender(self, canvas):
-		if self.canvasId is not None: Drawing.RemoveShape(canvas, self.canvasId)
-		if self.textId is not None: Drawing.RemoveShape(canvas, self.textId)
+		if self.canvasId is not None:
+			Drawing.RemoveShape(canvas, self.canvasId)
+			self.canvasId = None
+		if self.textId is not None:
+			Drawing.RemoveShape(canvas, self.textId)
+			self.textId = None

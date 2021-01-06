@@ -3,9 +3,9 @@ from bil.observation.pose import Pose
 from bil.model.trajectory import Trajectory
 
 class Observation:
-	def __init__(self, time, sensors, tracks):
+	def __init__(self, time, fov, tracks):
 		self.time = time
-		self.sensors = sensors
+		self.fov = fov
 		self.tracks = tracks
 
 	def __repr__(self):
@@ -16,7 +16,6 @@ class Observations:
 		self._dict: Dict[float, Observation] = {}
 		self.timeArray = []
 		self._trajectories = None
-		self._fieldOfView = None
 
 	def __len__(self):
 		return len(self._dict)
@@ -29,6 +28,9 @@ class Observations:
 
 	def __getitem__(self, key) -> Observation:
 		return self._dict[key]
+
+	def getObservationByIndex(self, index):
+		return self._dict[self.timeArray[index]]
 
 	@property
 	def trajectories(self):
@@ -46,4 +48,5 @@ class Observations:
 	def addObservation(self, observation: Observation):
 		if observation.time in self._dict: raise RuntimeError("Repeated observation timestamp.")
 		self.timeArray.append(observation.time)
+		self.timeArray.sort()
 		self._dict[observation.time] = observation

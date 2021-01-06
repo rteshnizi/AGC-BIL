@@ -56,7 +56,7 @@ class GraphAlgorithms:
 
 	@staticmethod
 	def isShadowRegion(graph: nx.DiGraph, n: str) -> bool:
-		_isShadow = True if "type" in graph.nodes[n] and graph.nodes[n]["type"] == "s" else False
+		_isShadow = True if "type" in graph.nodes[n] and graph.nodes[n]["type"] == "shadow" else False
 		if _isShadow: return True
 		_isShadow = True if "region" in graph.nodes[n] and isinstance(graph.nodes[n]["region"], ShadowRegion) else False
 		return _isShadow
@@ -129,7 +129,7 @@ class GraphAlgorithms:
 				labelsOther.append(node)
 				yOther.append(g.nodes[node]["centroid"].y)
 				zOther.append(g.nodes[node]["timestamp"])
-			elif g.nodes[node]["type"] == "s":
+			elif g.nodes[node]["type"] == "shadow":
 				xShadow.append(g.nodes[node]["centroid"].x)
 				labelsShadow.append(node)
 				yShadow.append(g.nodes[node]["centroid"].y)

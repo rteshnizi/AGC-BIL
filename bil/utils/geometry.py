@@ -1,4 +1,4 @@
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, MultiLineString, Point, Polygon
 from shapely.ops import cascaded_union
 from typing import List
 from math import sqrt, cos, sin, atan2, degrees
@@ -145,6 +145,6 @@ class Geometry:
 	def commonEdge(p1: Polygon, p2: Polygon):
 		# if p1.touches(p2):
 		r = p1.boundary.intersection(p2.boundary)
-		if isinstance(r, LineString):
+		if isinstance(r, LineString) or isinstance(r, MultiLineString):
 			return r if r.length > 0 else None
 		return None

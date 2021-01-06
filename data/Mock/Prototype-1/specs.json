@@ -1,5 +1,5 @@
 {
-	"simple": {
+	"simple-1": {
 		"states": ["START", "S-0", "S-1", "S-2", "END"],
 		"transitions": {
 			"START": ["((T0, False), S-0)"],
@@ -13,7 +13,7 @@
 			"T0": "lambda p : True"
 		}
 	},
-	"simple2": {
+	"simple-2": {
 		"states": ["START", "S-0", "S-1", "S-2", "END"],
 		"transitions": {
 			"START": ["((T0, False), S-0)"],

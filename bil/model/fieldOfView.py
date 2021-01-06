@@ -1,54 +1,39 @@
-from typing import List, Dict
-import networkx as nx
-
+from bil.observation.fov import FOV
 from bil.utils.graph import GraphAlgorithms
 from bil.model.sensingRegion import SensingRegion
 from bil.model.connectivityGraph import ConnectivityGraph
 from bil.model.timedGraph import TimedGraph
 
-class FieldOfView:
-	def __init__(self, envMap):
-		self.regions: Dict[float, SensingRegion] = {}
-		# Index to timestamp
-		self._timestamps = {}
-		self.map = envMap
-		self._cGraphs: List[ConnectivityGraph] = None
-		self.condensedCGraphs: List[ConnectivityGraph] = []
-		self._chainedGraphThroughTime: TimedGraph = None
+class FieldOfViewRenderer:
+	"""
+	Used for debug rendering ONLY
+	"""
+	def __init__(self):
+		self._previousFov = None
+		self._previousCGraph = None
 
-	def __len__(self):
-		return len(self.regions)
+	# def chainedGraphThroughTime(self, spec):
+	# 	if self._chainedGraphThroughTime is None:
+	# 		self._chainedGraphThroughTime = TimedGraph(self.cGraphs, spec)
+	# 	return self._chainedGraphThroughTime
 
-	def __getitem__(self, ind: int):
-		return self.regions[self._timestamps[ind]]
-
-	@property
-	def cGraphs(self) -> List[ConnectivityGraph]:
-		if self._cGraphs is None:
-			self._cGraphs = []
-			index = 0
-			for (t, regionList) in self.regions.items():
-				self._cGraphs.append(ConnectivityGraph(self.map, regionList, t, index))
-				index += 1
-		return self._cGraphs
-
-	def chainedGraphThroughTime(self, spec):
-		if self._chainedGraphThroughTime is None:
-			self._chainedGraphThroughTime = TimedGraph(self.cGraphs, spec)
-		return self._chainedGraphThroughTime
-
-	def append(self, region, timestamp, sensorId):
-		if timestamp not in self.regions:
-			self._timestamps[len(self._timestamps)] = timestamp
-			self.regions[timestamp] = []
-		self.regions[timestamp].append(region)
-
-	def render(self, canvas):
-		for (_, regionList) in self.regions.items():
-			for region in regionList:
-				region.render(canvas, False)
+	def render(self, envMap, fov, canvas):
+		if self._previousFov is not None and self._previousFov.time != fov.time: self.clearRender(canvas)
+		for sensorId in fov.sensors:
+			sensor = fov.sensors[sensorId]
+			sensor.region.render(canvas)
+		cGraph = ConnectivityGraph(envMap, fov, 0)
+		for p in cGraph._disjointPolys:
+			p.render(canvas)
+		self._previousFov = fov
+		self._previousCGraph = cGraph
 
 	def clearRender(self, canvas):
-		for (_, regionList) in self.regions.items():
-			for region in regionList:
-				region.clearRender(canvas)
+		if self._previousFov is None: return
+		for sensorId in self._previousFov.sensors:
+			sensor = self._previousFov.sensors[sensorId]
+			sensor.region.clearRender(canvas)
+		for p in self._previousCGraph._disjointPolys:
+			p.clearRender(canvas)
+		self._previousFov = None
+		self._previousCGraph = None

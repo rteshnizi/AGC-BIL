@@ -129,13 +129,13 @@ class ObservationParser(Parser):
 				ys = list(np.array(ys) + rawSensor["pose"][1]) # Temporary fix
 				coords = [[xs[j], ys[j]] for j in range(len(xs))]
 				region = SensingRegion("SR%d" % idNum, coords, rawObservation["t"], idNum, sortCoordinatesClockwise=True)
-				fov = FOV(rawObservation["t"], rawSensor["pose"][0], rawSensor["pose"][1], rawSensor["pose"][2], region)
-				sensor = Sensor(idNum, fov)
+				sensor = Sensor(idNum, rawObservation["t"], rawSensor["pose"][0], rawSensor["pose"][1], rawSensor["pose"][2], region)
 				sensors[(rawObservation["t"], idNum)] = sensor
+				fov = FOV(sensors)
 			if len(rawObservation["deletedTracks"]) > 0:
 				if lastTrack is None: print("Ignoring deleting Track %d. We can't delete a track before one exists." % rawObservation["deletedTracks"][0])
 				else: lastTrack.pose.vanished = True
-			observation = Observation(rawObservation["t"], sensors, tracks)
+			observation = Observation(rawObservation["t"], fov, tracks)
 			observations.addObservation(observation)
 		return observations
 

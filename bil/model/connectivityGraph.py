@@ -5,24 +5,27 @@ from typing import List, Set, Dict
 
 from bil.model.observationOld import ObservationOld
 from bil.model.polygonalRegion import PolygonalRegion
+from bil.model.sensingRegion import SensingRegion
 from bil.model.shadowRegion import ShadowRegion
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
 
 class ConnectivityGraph(nx.DiGraph):
-	def __init__(self, map, fov, timestamp, graphIndex):
+	def __init__(self, envMap, fov, graphIndex):
 		super().__init__()
 		self._regionNodes = []
 		self._beamNodes = []
 		self._beamSet = set()
 		self.fov = fov
-		self.map = map
-		self.timestamp = timestamp
+		self._fovComponentRegions: List[SensingRegion] = []
+		self.map = envMap
+		self.timestamp = fov.time
 		self.graphIndex = graphIndex
 		self._disjointPolys: List[PolygonalRegion] = []
 		print("Building graph for %s" % self.timestamp)
 		self._buildFromMap(fov)
 		self._fig = None
+		self._condensed = None
 		self._OBSOLETE_condensed = None
 		self._OBSOLETE_nodeClusters: Dict[str, Set[str]] = {}
 		self._OBSOLETE_nodeToClusterMap: Dict[str, str] = {}
@@ -43,6 +46,7 @@ class ConnectivityGraph(nx.DiGraph):
 		return GraphAlgorithms.getBeamName(start, end)
 
 	def condense(self, nfa):
+		if self._condensed is not None: return self._condensed
 		print("Condensing %s" % self.timestamp)
 		self.nodeClusters: Dict[str, Set[str]] = {}
 		self.nodeToClusterMap: Dict[str, str] = {}
@@ -109,13 +113,14 @@ class ConnectivityGraph(nx.DiGraph):
 					if GraphAlgorithms.isBeamNode(n): continue
 					region2 = self.nodes[n]["region"]
 					if Geometry.polygonAndPolygonIntersect(region1.polygon, region2.polygon):
-						condensedGraph.nodes[region1.name]["type"] = "s" if isinstance(region2, ShadowRegion) else "m"
+						condensedGraph.nodes[region1.name]["type"] = "shadow" if isinstance(region2, ShadowRegion) else "sensor"
 						condensedGraph.add_edge(region1.name, self.nodeToClusterMap[n])
 						break
 
 		print(len(self.nodes))
 		print(len(condensedGraph.nodes))
-		return condensedGraph
+		self._condensed = condensedGraph
+		return self._condensed
 
 	def _addBeamNodes(self, rOut, rIn):
 		out2in = GraphAlgorithms.getBeamName(rOut, rIn)
@@ -137,7 +142,7 @@ class ConnectivityGraph(nx.DiGraph):
 		self._addNode(name)
 		self.nodes[name]["region"] = polygonalRegion
 		self.nodes[name]["centroid"] = polygonalRegion.polygon.centroid
-		self.nodes[name]["type"] = "s" if isinstance(polygonalRegion, ShadowRegion) else "m"
+		self.nodes[name]["type"] = "shadow" if isinstance(polygonalRegion, ShadowRegion) else "sensor"
 		self._regionNodes.append(name)
 
 	def _addBeam(self, name):
@@ -147,9 +152,23 @@ class ConnectivityGraph(nx.DiGraph):
 	def _getMapRegion(self, name):
 		return self.map.regions.get(name.split("-")[0], None)
 
+	def _addSensorRegionConnectedComponents(self, fovUnion):
+		i = 0
+		for connectedComponent in fovUnion:
+			name = "FOV-%d" % i
+			coords = list(zip(*connectedComponent.exterior.coords.xy))
+			region = SensingRegion(name, coords, self.timestamp, i)
+			self._addNode(name)
+			self.nodes[name]["region"] = region
+			self.nodes[name]["centroid"] = region.polygon.centroid
+			self.nodes[name]["type"] = "sensor"
+			self._regionNodes.append(name)
+			self._fovComponentRegions.append(region)
+			i += 1
+
 	def _buildFromMap(self, fov):
-		fovUnion = Geometry.union([r.polygon for r in fov])
-		for fovRegion in fov: self._addRegion(fovRegion)
+		fovUnion = fov.polygon
+		self._addSensorRegionConnectedComponents(fovUnion)
 		for mapR in self.map.regions.values():
 			if Geometry.polygonAndPolygonIntersect(mapR.polygon, fovUnion):
 				insidePolys = Geometry.intersect(mapR.polygon, fovUnion)
@@ -167,9 +186,10 @@ class ConnectivityGraph(nx.DiGraph):
 			if not isinstance(p1, ShadowRegion): continue
 			if self._getMapRegion(p1.name).isObstacle: continue
 			self._addRegion(p1)
-			for fovRegion in fov:
+			for fovRegion in self._fovComponentRegions:
 				e = Geometry.commonEdge(p1.polygon, fovRegion.polygon)
-				if e: self._addBeamNodes(p1.name, fovRegion.name)
+				if e:
+					self._addBeamNodes(p1.name, fovRegion.name)
 			for p2 in self._disjointPolys:
 				if p1 == p2: continue
 				if not isinstance(p2, ShadowRegion): continue
