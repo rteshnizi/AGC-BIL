@@ -1,6 +1,6 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, Point, Polygon, MultiPolygon
 from typing import List, Set, Dict
 
 from bil.model.observationOld import ObservationOld
@@ -152,19 +152,25 @@ class ConnectivityGraph(nx.DiGraph):
 	def _getMapRegion(self, name):
 		return self.map.regions.get(name.split("-")[0], None)
 
+	def _addSingleSensorRegionConnectedComponent(self, connectedComponent, index):
+		name = "FOV-%d" % index
+		coords = list(zip(*connectedComponent.exterior.coords.xy))
+		region = SensingRegion(name, coords, self.timestamp, index)
+		self._addNode(name)
+		self.nodes[name]["region"] = region
+		self.nodes[name]["centroid"] = region.polygon.centroid
+		self.nodes[name]["type"] = "sensor"
+		self._regionNodes.append(name)
+		self._fovComponentRegions.append(region)
+
 	def _addSensorRegionConnectedComponents(self, fovUnion):
-		i = 0
-		for connectedComponent in fovUnion:
-			name = "FOV-%d" % i
-			coords = list(zip(*connectedComponent.exterior.coords.xy))
-			region = SensingRegion(name, coords, self.timestamp, i)
-			self._addNode(name)
-			self.nodes[name]["region"] = region
-			self.nodes[name]["centroid"] = region.polygon.centroid
-			self.nodes[name]["type"] = "sensor"
-			self._regionNodes.append(name)
-			self._fovComponentRegions.append(region)
-			i += 1
+		if isinstance(fovUnion, MultiPolygon):
+			i = 0
+			for connectedComponent in fovUnion:
+				self._addSingleSensorRegionConnectedComponent(connectedComponent, i)
+				i += 1
+		else:
+			self._addSingleSensorRegionConnectedComponent(fovUnion, 0)
 
 	def _buildFromMap(self, fov):
 		fovUnion = fov.polygon

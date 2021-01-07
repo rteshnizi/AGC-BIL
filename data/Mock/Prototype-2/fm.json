@@ -1,0 +1,451 @@
+{
+  
+  "Edges": [
+    { "EndNodes": [ "BallPark", "Building A" ] },
+    { "EndNodes": [ "BallPark", "Building B" ] },
+    { "EndNodes": [ "BallPark", "Wall 1" ] },
+    { "EndNodes": [ "BallPark", "Wall 2" ] },
+    { "EndNodes": [ "BallPark", "River 1" ] },
+    { "EndNodes": [ "BallPark", "River 2" ] },
+    { "EndNodes": [ "BallPark", "River 3" ] },
+    { "EndNodes": [ "BallPark", "Bridge 1" ] },
+    { "EndNodes": [ "BallPark", "Bridge 2" ] },
+    { "EndNodes": [ "BallPark", "Trees 1" ] },
+    { "EndNodes": [ "BallPark", "Trees 2" ] },
+    { "EndNodes": [ "BallPark", "Trees 3" ] },
+    { "EndNodes": [ "BallPark", "Trees 4" ] },
+    { "EndNodes": [ "BallPark", "Trees 5" ] },
+    { "EndNodes": [ "BallPark", "Trees 6" ] }
+  ],
+  "Nodes": [
+    {
+      "Name": "BallPark",
+      "zl": 0,
+      "feature": {
+        "x": [ 0, 200, 200, 0 ],
+        "y": [ 0, 0, 200, 200 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 100 },
+        "easy2Cross": {
+          "pedestrian": 100,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 0, 0 ],
+          [ 200, 0 ],
+          [ 200, 200 ],
+          [ 0, 200 ]
+        ]
+      }
+    },
+    {
+      "Name": "Building A",
+      "zl": 1,
+      "feature": {
+        "x": [ 20, 40, 40, 20 ],
+        "y": [ 155, 155, 200, 200 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 50,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 20, 155 ],
+          [ 40, 155 ],
+          [ 40, 200 ],
+          [ 20, 200 ]
+        ]
+      }
+    },
+    {
+      "Name": "Building B",
+      "zl": 1,
+      "feature": {
+        "x": [ 30, 55, 55, 30 ],
+        "y": [ 0, 0, 45, 45 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 50,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 30, 0 ],
+          [ 55, 0 ],
+          [ 55, 45 ],
+          [ 30, 45 ]
+        ]
+      }
+    },
+    {
+      "Name": "Wall 1",
+      "zl": 1,
+      "feature": {
+        "x": [ 0, 100, 100, 0 ],
+        "y": [ 145, 145, 150, 150 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 0, 145 ],
+          [ 100, 145 ],
+          [ 100, 150 ],
+          [ 0, 150 ]
+        ]
+      }
+    },
+    {
+      "Name": "Wall 2",
+      "zl": 1,
+      "feature": {
+        "x": [ 150, 150, 170, 200, 200, 170 ],
+        "y": [ 145, 150, 150, 125, 120, 145 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 150, 145 ],
+          [ 150, 150 ],
+          [ 170, 150 ],
+          [ 200, 125 ],
+          [ 200, 120 ],
+          [ 170, 145 ]
+        ]
+      }
+    },
+    {
+      "Name": "River 1",
+      "zl": 1,
+      "feature": {
+        "x": [ 0, 0, 22, 10, 12, 25, 20, 30, 0 ],
+        "y": [ 20, 30, 45, 70, 95, 85, 70, 45, 20 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "no",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 0, 20 ],
+          [ 0, 30 ],
+          [ 22, 45 ],
+          [ 10, 70 ],
+          [ 12, 95 ],
+          [ 25, 85 ],
+          [ 20, 70 ],
+          [ 30, 45 ],
+          [ 0, 20 ]
+        ]
+      }
+    },
+    {
+      "Name": "River 2",
+      "zl": 1,
+      "feature": {
+        "x": [ 28, 32, 50, 65, 90, 100, 70, 55 ],
+        "y": [ 100, 95, 100, 70, 45, 50, 70, 105 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "no",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 28, 100 ],
+          [ 32, 95 ],
+          [ 50, 100 ],
+          [ 65, 70 ],
+          [ 90, 45 ],
+          [ 100, 50 ],
+          [ 70, 70 ],
+          [ 55, 105 ]
+        ]
+      }
+    },
+    {
+      "Name": "River 3",
+      "zl": 1,
+      "feature": {
+        "x": [ 100, 105, 120, 160, 190, 180, 165, 125 ],
+        "y": [ 40, 45, 30, 40, 0, 0, 25, 22 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "no",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 100, 40 ],
+          [ 105, 45 ],
+          [ 120, 30 ],
+          [ 160, 40 ],
+          [ 190, 0 ],
+          [ 180, 0 ],
+          [ 165, 25 ],
+          [ 125, 22 ]
+        ]
+      }
+    },
+    {
+      "Name": "Bridge 1",
+      "zl": 1,
+      "feature": {
+        "x": [ 27, 25, 12, 10, 27, 28, 32, 33 ],
+        "y": [ 84, 85, 95, 96, 101, 100, 95, 94 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 20 },
+        "easy2Cross": {
+          "pedestrian": 100,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 27, 84 ],
+          [ 25, 85 ],
+          [ 12, 95 ],
+          [ 10, 96 ],
+          [ 27, 101 ],
+          [ 28, 100 ],
+          [ 32, 95 ],
+          [ 33, 94 ]
+        ]
+      }
+    },
+    {
+      "Name": "Bridge 2",
+      "zl": 1,
+      "feature": {
+        "x": [ 89, 90, 100, 101, 106, 105, 100, 99 ],
+        "y": [ 44, 45, 50, 51, 46, 45, 40, 39 ],
+        "r": [],
+        "type": "bb",
+        "easy2cross": { "Car": 20 },
+        "easy2Cross": {
+          "pedestrian": 100,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "yes",
+          "fromAbove": "yes"
+        },
+        "boundary": [
+          [ 89, 44 ],
+          [ 90, 45 ],
+          [ 100, 50 ],
+          [ 101, 51 ],
+          [ 106, 46 ],
+          [ 105, 45 ],
+          [ 100, 40 ],
+          [ 99, 39 ]
+        ]
+      }
+    },
+    {
+      "Name": "Trees 1",
+      "zl": 1,
+      "feature": {
+        "x": 50,
+        "y": 120,
+        "r": 5,
+        "type": "pent",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "no",
+          "fromAbove": "no"
+        },
+        "boundary": [
+          [ 55, 120 ],
+          [ 52.5, 124.3301270189222 ],
+          [ 47.5, 124.3301270189222 ],
+          [ 45, 120 ],
+          [ 47.5, 115.6698729810778 ]
+        ]
+      }
+    },
+    {
+      "Name": "Trees 2",
+      "zl": 1,
+      "feature": {
+        "x": 80,
+        "y": 80,
+        "r": 5,
+        "type": "pent",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "no",
+          "fromAbove": "no"
+        },
+        "boundary": [
+          [ 85, 80 ],
+          [ 82.5, 84.3301270189222 ],
+          [ 77.5, 84.3301270189222 ],
+          [ 75, 80 ],
+          [ 77.5, 75.6698729810778 ]
+        ]
+      }
+    },
+    {
+      "Name": "Trees 3",
+      "zl": 1,
+      "feature": {
+        "x": 75,
+        "y": 45,
+        "r": 5,
+        "type": "pent",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "no",
+          "fromAbove": "no"
+        },
+        "boundary": [
+          [ 80, 45 ],
+          [ 77.5, 49.330127018922191 ],
+          [ 72.5, 49.330127018922191 ],
+          [ 70, 45 ],
+          [ 72.5, 40.669872981077809 ]
+        ]
+      }
+    },
+    {
+      "Name": "Trees 4",
+      "zl": 1,
+      "feature": {
+        "x": 130,
+        "y": 40,
+        "r": 5,
+        "type": "pent",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "no",
+          "fromAbove": "no"
+        },
+        "boundary": [
+          [ 135, 40 ],
+          [ 132.5, 44.330127018922191 ],
+          [ 127.5, 44.330127018922191 ],
+          [ 125, 40 ],
+          [ 127.5, 35.669872981077809 ]
+        ]
+      }
+    },
+    {
+      "Name": "Trees 5",
+      "zl": 1,
+      "feature": {
+        "x": 175,
+        "y": 35,
+        "r": 5,
+        "type": "pent",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "no",
+          "fromAbove": "no"
+        },
+        "boundary": [
+          [ 180, 35 ],
+          [ 177.5, 39.330127018922191 ],
+          [ 172.5, 39.330127018922191 ],
+          [ 170, 35 ],
+          [ 172.5, 30.669872981077809 ]
+        ]
+      }
+    },
+    {
+      "Name": "Trees 6",
+      "zl": 1,
+      "feature": {
+        "x": 190,
+        "y": 25,
+        "r": 5,
+        "type": "pent",
+        "easy2cross": { "Car": 0 },
+        "easy2Cross": {
+          "pedestrian": 0,
+          "av": 100
+        },
+        "seethrough": {
+          "fromSide": "no",
+          "fromAbove": "no"
+        },
+        "boundary": [
+          [ 195, 25 ],
+          [ 192.5, 29.330127018922191 ],
+          [ 187.5, 29.330127018922195 ],
+          [ 185, 25 ],
+          [ 187.5, 20.669872981077809 ]
+        ]
+      }
+    }
+  ]
+}

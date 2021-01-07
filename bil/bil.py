@@ -1,13 +1,17 @@
 import os
 from bil.parser import EnvironmentParser, ObservationParser, SpecParser
 from bil.model.scenario import Scenario
+from bil.gui.drawing import Drawing
 from bil.gui.app import App
 
 class Bil(object):
 	def __init__(self, loadFromFile=False):
 		self.loadFromFile = loadFromFile
-		self.mockDataDir = os.path.abspath(os.path.join("data", "Mock", "Prototype-1"))
-		# self.mockDataDir = os.path.abspath(os.path.join("data", "Mock", "MovingSensor-0"))
+		self.dataPrototype = "Prototype-2"
+		# self.dataPrototype = "Prototype-1"
+		# self.dataPrototype = "MovingSensor-0"
+		Drawing.init(self.dataPrototype)
+		self.mockDataDir = os.path.abspath(os.path.join("data", "Mock", self.dataPrototype))
 		self.envParser = EnvironmentParser(self.mockDataDir)
 		self.featureMap = None
 		self.map = None

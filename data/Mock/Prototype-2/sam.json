@@ -1,0 +1,962 @@
+{
+  
+  "Edges": [
+    { "EndNodes": [ 1, 5 ] },
+    { "EndNodes": [ 1, 85 ] },
+    { "EndNodes": [ 1, 92 ] },
+    { "EndNodes": [ 2, 22 ] },
+    { "EndNodes": [ 2, 27 ] },
+    { "EndNodes": [ 2, 28 ] },
+    { "EndNodes": [ 3, 77 ] },
+    { "EndNodes": [ 3, 133 ] },
+    { "EndNodes": [ 3, 134 ] },
+    { "EndNodes": [ 4, 11 ] },
+    { "EndNodes": [ 4, 73 ] },
+    { "EndNodes": [ 4, 135 ] },
+    { "EndNodes": [ 5, 68 ] },
+    { "EndNodes": [ 5, 103 ] },
+    { "EndNodes": [ 6, 80 ] },
+    { "EndNodes": [ 6, 93 ] },
+    { "EndNodes": [ 6, 109 ] },
+    { "EndNodes": [ 7, 25 ] },
+    { "EndNodes": [ 7, 45 ] },
+    { "EndNodes": [ 7, 52 ] },
+    { "EndNodes": [ 8, 16 ] },
+    { "EndNodes": [ 8, 53 ] },
+    { "EndNodes": [ 8, 145 ] },
+    { "EndNodes": [ 9, 11 ] },
+    { "EndNodes": [ 9, 24 ] },
+    { "EndNodes": [ 9, 43 ] },
+    { "EndNodes": [ 10, 16 ] },
+    { "EndNodes": [ 10, 76 ] },
+    { "EndNodes": [ 10, 97 ] },
+    { "EndNodes": [ 11, 23 ] },
+    { "EndNodes": [ 12, 36 ] },
+    { "EndNodes": [ 12, 128 ] },
+    { "EndNodes": [ 12, 130 ] },
+    { "EndNodes": [ 13, 21 ] },
+    { "EndNodes": [ 13, 87 ] },
+    { "EndNodes": [ 13, 146 ] },
+    { "EndNodes": [ 14, 20 ] },
+    { "EndNodes": [ 14, 42 ] },
+    { "EndNodes": [ 14, 146 ] },
+    { "EndNodes": [ 15, 26 ] },
+    { "EndNodes": [ 15, 59 ] },
+    { "EndNodes": [ 15, 66 ] },
+    { "EndNodes": [ 16, 97 ] },
+    { "EndNodes": [ 17, 39 ] },
+    { "EndNodes": [ 17, 54 ] },
+    { "EndNodes": [ 17, 55 ] },
+    { "EndNodes": [ 18, 26 ] },
+    { "EndNodes": [ 18, 57 ] },
+    { "EndNodes": [ 18, 64 ] },
+    { "EndNodes": [ 19, 37 ] },
+    { "EndNodes": [ 19, 41 ] },
+    { "EndNodes": [ 19, 51 ] },
+    { "EndNodes": [ 20, 21 ] },
+    { "EndNodes": [ 20, 24 ] },
+    { "EndNodes": [ 21, 24 ] },
+    { "EndNodes": [ 22, 45 ] },
+    { "EndNodes": [ 22, 53 ] },
+    { "EndNodes": [ 23, 86 ] },
+    { "EndNodes": [ 23, 90 ] },
+    { "EndNodes": [ 25, 32 ] },
+    { "EndNodes": [ 25, 110 ] },
+    { "EndNodes": [ 26, 55 ] },
+    { "EndNodes": [ 27, 145 ] },
+    { "EndNodes": [ 27, 147 ] },
+    { "EndNodes": [ 28, 88 ] },
+    { "EndNodes": [ 28, 93 ] },
+    { "EndNodes": [ 29, 71 ] },
+    { "EndNodes": [ 29, 102 ] },
+    { "EndNodes": [ 29, 103 ] },
+    { "EndNodes": [ 30, 62 ] },
+    { "EndNodes": [ 30, 63 ] },
+    { "EndNodes": [ 30, 133 ] },
+    { "EndNodes": [ 31, 34 ] },
+    { "EndNodes": [ 31, 35 ] },
+    { "EndNodes": [ 31, 141 ] },
+    { "EndNodes": [ 32, 108 ] },
+    { "EndNodes": [ 32, 123 ] },
+    { "EndNodes": [ 33, 115 ] },
+    { "EndNodes": [ 33, 116 ] },
+    { "EndNodes": [ 33, 148 ] },
+    { "EndNodes": [ 34, 119 ] },
+    { "EndNodes": [ 34, 121 ] },
+    { "EndNodes": [ 35, 142 ] },
+    { "EndNodes": [ 36, 94 ] },
+    { "EndNodes": [ 36, 111 ] },
+    { "EndNodes": [ 37, 43 ] },
+    { "EndNodes": [ 38, 51 ] },
+    { "EndNodes": [ 38, 54 ] },
+    { "EndNodes": [ 39, 40 ] },
+    { "EndNodes": [ 39, 51 ] },
+    { "EndNodes": [ 40, 42 ] },
+    { "EndNodes": [ 40, 43 ] },
+    { "EndNodes": [ 42, 60 ] },
+    { "EndNodes": [ 44, 86 ] },
+    { "EndNodes": [ 44, 89 ] },
+    { "EndNodes": [ 44, 90 ] },
+    { "EndNodes": [ 45, 100 ] },
+    { "EndNodes": [ 46, 69 ] },
+    { "EndNodes": [ 46, 70 ] },
+    { "EndNodes": [ 46, 74 ] },
+    { "EndNodes": [ 47, 62 ] },
+    { "EndNodes": [ 47, 66 ] },
+    { "EndNodes": [ 47, 144 ] },
+    { "EndNodes": [ 48, 49 ] },
+    { "EndNodes": [ 48, 59 ] },
+    { "EndNodes": [ 48, 65 ] },
+    { "EndNodes": [ 49, 58 ] },
+    { "EndNodes": [ 49, 61 ] },
+    { "EndNodes": [ 50, 68 ] },
+    { "EndNodes": [ 50, 134 ] },
+    { "EndNodes": [ 52, 53 ] },
+    { "EndNodes": [ 52, 95 ] },
+    { "EndNodes": [ 54, 57 ] },
+    { "EndNodes": [ 55, 58 ] },
+    { "EndNodes": [ 56, 57 ] },
+    { "EndNodes": [ 56, 63 ] },
+    { "EndNodes": [ 58, 60 ] },
+    { "EndNodes": [ 59, 78 ] },
+    { "EndNodes": [ 60, 61 ] },
+    { "EndNodes": [ 61, 82 ] },
+    { "EndNodes": [ 62, 81 ] },
+    { "EndNodes": [ 63, 64 ] },
+    { "EndNodes": [ 64, 66 ] },
+    { "EndNodes": [ 65, 78 ] },
+    { "EndNodes": [ 65, 82 ] },
+    { "EndNodes": [ 67, 69 ] },
+    { "EndNodes": [ 67, 70 ] },
+    { "EndNodes": [ 68, 74 ] },
+    { "EndNodes": [ 70, 72 ] },
+    { "EndNodes": [ 71, 104 ] },
+    { "EndNodes": [ 71, 105 ] },
+    { "EndNodes": [ 72, 99 ] },
+    { "EndNodes": [ 73, 80 ] },
+    { "EndNodes": [ 73, 88 ] },
+    { "EndNodes": [ 74, 99 ] },
+    { "EndNodes": [ 75, 79 ] },
+    { "EndNodes": [ 75, 96 ] },
+    { "EndNodes": [ 75, 134 ] },
+    { "EndNodes": [ 76, 83 ] },
+    { "EndNodes": [ 76, 96 ] },
+    { "EndNodes": [ 77, 79 ] },
+    { "EndNodes": [ 77, 133 ] },
+    { "EndNodes": [ 78, 143 ] },
+    { "EndNodes": [ 79, 81 ] },
+    { "EndNodes": [ 80, 94 ] },
+    { "EndNodes": [ 81, 83 ] },
+    { "EndNodes": [ 82, 132 ] },
+    { "EndNodes": [ 83, 144 ] },
+    { "EndNodes": [ 84, 94 ] },
+    { "EndNodes": [ 84, 131 ] },
+    { "EndNodes": [ 84, 148 ] },
+    { "EndNodes": [ 85, 95 ] },
+    { "EndNodes": [ 85, 96 ] },
+    { "EndNodes": [ 86, 87 ] },
+    { "EndNodes": [ 87, 89 ] },
+    { "EndNodes": [ 88, 90 ] },
+    { "EndNodes": [ 89, 147 ] },
+    { "EndNodes": [ 91, 131 ] },
+    { "EndNodes": [ 91, 148 ] },
+    { "EndNodes": [ 92, 110 ] },
+    { "EndNodes": [ 92, 112 ] },
+    { "EndNodes": [ 93, 100 ] },
+    { "EndNodes": [ 95, 97 ] },
+    { "EndNodes": [ 98, 103 ] },
+    { "EndNodes": [ 98, 105 ] },
+    { "EndNodes": [ 98, 107 ] },
+    { "EndNodes": [ 99, 107 ] },
+    { "EndNodes": [ 100, 108 ] },
+    { "EndNodes": [ 101, 122 ] },
+    { "EndNodes": [ 101, 125 ] },
+    { "EndNodes": [ 101, 140 ] },
+    { "EndNodes": [ 102, 106 ] },
+    { "EndNodes": [ 102, 117 ] },
+    { "EndNodes": [ 104, 106 ] },
+    { "EndNodes": [ 104, 114 ] },
+    { "EndNodes": [ 105, 114 ] },
+    { "EndNodes": [ 108, 109 ] },
+    { "EndNodes": [ 109, 124 ] },
+    { "EndNodes": [ 110, 126 ] },
+    { "EndNodes": [ 111, 113 ] },
+    { "EndNodes": [ 111, 124 ] },
+    { "EndNodes": [ 112, 117 ] },
+    { "EndNodes": [ 112, 130 ] },
+    { "EndNodes": [ 113, 123 ] },
+    { "EndNodes": [ 113, 126 ] },
+    { "EndNodes": [ 115, 125 ] },
+    { "EndNodes": [ 115, 137 ] },
+    { "EndNodes": [ 116, 118 ] },
+    { "EndNodes": [ 116, 127 ] },
+    { "EndNodes": [ 117, 129 ] },
+    { "EndNodes": [ 118, 120 ] },
+    { "EndNodes": [ 118, 127 ] },
+    { "EndNodes": [ 119, 120 ] },
+    { "EndNodes": [ 119, 129 ] },
+    { "EndNodes": [ 120, 122 ] },
+    { "EndNodes": [ 121, 122 ] },
+    { "EndNodes": [ 121, 139 ] },
+    { "EndNodes": [ 123, 124 ] },
+    { "EndNodes": [ 125, 138 ] },
+    { "EndNodes": [ 126, 128 ] },
+    { "EndNodes": [ 127, 129 ] },
+    { "EndNodes": [ 128, 130 ] },
+    { "EndNodes": [ 131, 135 ] },
+    { "EndNodes": [ 132, 143 ] },
+    { "EndNodes": [ 132, 145 ] },
+    { "EndNodes": [ 136, 138 ] },
+    { "EndNodes": [ 136, 139 ] },
+    { "EndNodes": [ 136, 140 ] },
+    { "EndNodes": [ 137, 142 ] },
+    { "EndNodes": [ 138, 141 ] },
+    { "EndNodes": [ 139, 140 ] },
+    { "EndNodes": [ 141, 142 ] },
+    { "EndNodes": [ 143, 144 ] },
+    { "EndNodes": [ 146, 147 ] }
+  ],
+  "Nodes": [
+    {
+      "vertexIDs": [ 17, 14, 59 ],
+      "incenter": [ 112.39221938319024, 129.42234721776541 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 35, 36, 34 ],
+      "incenter": [ 91.218266480817988, 50.546730955062174 ],
+      "feature": "River 2"
+    },
+    {
+      "vertexIDs": [ 55, 13, 56 ],
+      "incenter": [ 47.689995667588384, 125.2429064527236 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 53, 10, 45 ],
+      "incenter": [ 99.99161034983581, 25.454925536351858 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 15, 14, 17 ],
+      "incenter": [ 102.37531094719778, 147.37531094719776 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 39, 38, 40 ],
+      "incenter": [ 105, 40.8113883008419 ],
+      "feature": "River 3"
+    },
+    {
+      "vertexIDs": [ 51, 59, 63 ],
+      "incenter": [ 83.551882711053992, 74.798255873170248 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 37, 36, 62 ],
+      "incenter": [ 70.279166751652, 79.499873252486566 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 68, 11, 10 ],
+      "incenter": [ 62.339037260983417, 35.623694895900371 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 60, 37, 61 ],
+      "incenter": [ 78.075592891820108, 85.807494759282832 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 68, 10, 53 ],
+      "incenter": [ 77.966748078228633, 31.768562666348181 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 73, 41, 69 ],
+      "incenter": [ 135.43653070816717, 38.370845218056026 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 65, 66, 68 ],
+      "incenter": [ 74.330127018922184, 47.5 ],
+      "feature": "Trees 3"
+    },
+    {
+      "vertexIDs": [ 66, 33, 11 ],
+      "incenter": [ 64.731989016598021, 53.474284593603777 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 30, 27, 28 ],
+      "incenter": [ 21.911803812799125, 93.233138789718936 ],
+      "feature": "Bridge 1"
+    },
+    {
+      "vertexIDs": [ 37, 62, 61 ],
+      "incenter": [ 74.704583151487583, 83.901681003751762 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 26, 25, 29 ],
+      "incenter": [ 16.325488419877594, 66.019787809947246 ],
+      "feature": "River 1"
+    },
+    {
+      "vertexIDs": [ 26, 27, 47 ],
+      "incenter": [ 10.975318068555961, 94.421902215234567 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 12, 23, 9 ],
+      "incenter": [ 18.759999959603491, 21.002132187553315 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 11, 67, 66 ],
+      "incenter": [ 69.013878188659959, 46.708013079692776 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 68, 66, 67 ],
+      "incenter": [ 71.339745962155618, 45 ],
+      "feature": "Trees 3"
+    },
+    {
+      "vertexIDs": [ 36, 35, 63 ],
+      "incenter": [ 76.941315758180281, 70.205928293956077 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 50, 68, 53 ],
+      "incenter": [ 88.7040512476188, 41.775238479427792 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 67, 11, 68 ],
+      "incenter": [ 69.013878188659959, 43.291986920307217 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 51, 71, 59 ],
+      "incenter": [ 104.79947181401234, 55.930070252788454 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 28, 27, 26 ],
+      "incenter": [ 16.677234203175352, 84.459500143049638 ],
+      "feature": "River 1"
+    },
+    {
+      "vertexIDs": [ 33, 34, 36 ],
+      "incenter": [ 69.169858936081567, 68.272787875492369 ],
+      "feature": "River 2"
+    },
+    {
+      "vertexIDs": [ 38, 35, 34 ],
+      "incenter": [ 96.909830056250527, 45 ],
+      "feature": "Bridge 2"
+    },
+    {
+      "vertexIDs": [ 22, 18, 17 ],
+      "incenter": [ 152.19223593595586, 147.19223593595586 ],
+      "feature": "Wall 2"
+    },
+    {
+      "vertexIDs": [ 57, 13, 48 ],
+      "incenter": [ 28.721671435427925, 117.49546303005681 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 80, 79, 21 ],
+      "incenter": [ 193.88636083822925, 29.640922384550304 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 71, 51, 52 ],
+      "incenter": [ 106.78989239470683, 47.715725574803841 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 41, 42, 78 ],
+      "incenter": [ 170.83093195421961, 29.193966343483488 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 75, 80, 21 ],
+      "incenter": [ 186.12155456000204, 42.530064717733318 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 79, 2, 21 ],
+      "incenter": [ 197.5065099365352, 25.181804807880841 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 40, 41, 73 ],
+      "incenter": [ 128.2151838084298, 33.929439310575589 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 9, 10, 12 ],
+      "incenter": [ 39.2609246475325, 9.2609246475325 ],
+      "feature": "Building B"
+    },
+    {
+      "vertexIDs": [ 23, 25, 24 ],
+      "incenter": [ 3.1460613829113178, 28.337298849652367 ],
+      "feature": "River 1"
+    },
+    {
+      "vertexIDs": [ 12, 29, 25 ],
+      "incenter": [ 25.07702418614819, 48.3330168942851 ],
+      "feature": "River 1"
+    },
+    {
+      "vertexIDs": [ 12, 11, 29 ],
+      "incenter": [ 34.457098850229691, 51.5832819141272 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 1, 9, 23 ],
+      "incenter": [ 6.9722436226800539, 6.9722436226800539 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 29, 11, 33 ],
+      "incenter": [ 50.542901149770316, 60.212067551787548 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 12, 10, 11 ],
+      "incenter": [ 45.7390753524675, 35.7390753524675 ],
+      "feature": "Building B"
+    },
+    {
+      "vertexIDs": [ 50, 34, 64 ],
+      "incenter": [ 88.820585787882166, 44.511470637685221 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 35, 51, 63 ],
+      "incenter": [ 100.03325330937997, 51.011737669648284 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 16, 6, 5 ],
+      "incenter": [ 20.152119693297777, 153.7643156636056 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 30, 58, 48 ],
+      "incenter": [ 28.049600180387234, 100.91359322120114 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 28, 49, 31 ],
+      "incenter": [ 32.089900552457941, 93.9732554846051 ],
+      "feature": "Bridge 1"
+    },
+    {
+      "vertexIDs": [ 28, 46, 49 ],
+      "incenter": [ 26.618058390713355, 85.311609573995725 ],
+      "feature": "Bridge 1"
+    },
+    {
+      "vertexIDs": [ 14, 16, 13 ],
+      "incenter": [ 2.4375390137480357, 147.43753901374805 ],
+      "feature": "Wall 1"
+    },
+    {
+      "vertexIDs": [ 23, 12, 25 ],
+      "incenter": [ 23.125201615580078, 42.510979690536054 ],
+      "feature": "River 1"
+    },
+    {
+      "vertexIDs": [ 62, 63, 59 ],
+      "incenter": [ 78.169872981077816, 78.169872981077816 ],
+      "feature": "Trees 2"
+    },
+    {
+      "vertexIDs": [ 62, 36, 63 ],
+      "incenter": [ 75.115347173767859, 76.153114930180763 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 25, 26, 24 ],
+      "incenter": [ 12.274992676215859, 47.612368735849159 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 29, 28, 26 ],
+      "incenter": [ 17.700907567377264, 73.189820356989259 ],
+      "feature": "River 1"
+    },
+    {
+      "vertexIDs": [ 24, 47, 13 ],
+      "incenter": [ 4.9619595454640386, 95.87163903645731 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 24, 26, 47 ],
+      "incenter": [ 8.0594746151327836, 70.238889591531034 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 46, 28, 29 ],
+      "incenter": [ 25.606601717798213, 83.535533905932752 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 31, 30, 28 ],
+      "incenter": [ 29.238068402896328, 94.911567303796019 ],
+      "feature": "Bridge 1"
+    },
+    {
+      "vertexIDs": [ 33, 46, 29 ],
+      "incenter": [ 30.077781189932676, 76.228411306562748 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 33, 49, 46 ],
+      "incenter": [ 34.445124028723804, 86.62267343241723 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 58, 57, 48 ],
+      "incenter": [ 44.564235269404755, 116.30493912760939 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 47, 48, 13 ],
+      "incenter": [ 15.638448009739491, 105.36990118029094 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 47, 27, 48 ],
+      "incenter": [ 12.034061923666442, 95.81890295936239 ],
+      "feature": "Bridge 1"
+    },
+    {
+      "vertexIDs": [ 49, 32, 31 ],
+      "incenter": [ 33.157747120492985, 94.695451090852046 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 48, 27, 30 ],
+      "incenter": [ 26.852685638105772, 100.28229557043962 ],
+      "feature": "Bridge 1"
+    },
+    {
+      "vertexIDs": [ 8, 4, 5 ],
+      "incenter": [ 12.122144504490262, 192.12214450449025 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 15, 16, 14 ],
+      "incenter": [ 97.562460986251978, 147.56246098625198 ],
+      "feature": "Wall 1"
+    },
+    {
+      "vertexIDs": [ 4, 16, 5 ],
+      "incenter": [ 8.3430796399132152, 160.68561955955388 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 6, 8, 5 ],
+      "incenter": [ 27.877855495509735, 162.87785549550972 ],
+      "feature": "Building A"
+    },
+    {
+      "vertexIDs": [ 22, 19, 18 ],
+      "incenter": [ 167.80776406404416, 147.80776406404416 ],
+      "feature": "Wall 2"
+    },
+    {
+      "vertexIDs": [ 7, 8, 6 ],
+      "incenter": [ 32.122144504490258, 192.12214450449025 ],
+      "feature": "Building A"
+    },
+    {
+      "vertexIDs": [ 45, 38, 53 ],
+      "incenter": [ 100.0718895622953, 39.110972163401541 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 16, 15, 6 ],
+      "incenter": [ 40.051657923765632, 152.49352603795739 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 14, 55, 54 ],
+      "incenter": [ 55.889398693115055, 123.21301262159783 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 60, 54, 37 ],
+      "incenter": [ 59.367768803652737, 107.18103654311392 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 55, 56, 57 ],
+      "incenter": [ 48.169872981077809, 123.16987298107782 ],
+      "feature": "Trees 1"
+    },
+    {
+      "vertexIDs": [ 31, 32, 30 ],
+      "incenter": [ 32.860791272581722, 97.663782935951374 ],
+      "feature": "River 2"
+    },
+    {
+      "vertexIDs": [ 54, 55, 57 ],
+      "incenter": [ 51.830127018922191, 121.83012701892218 ],
+      "feature": "Trees 1"
+    },
+    {
+      "vertexIDs": [ 38, 45, 40 ],
+      "incenter": [ 118.77195520436038, 28.649441764996229 ],
+      "feature": "River 3"
+    },
+    {
+      "vertexIDs": [ 54, 57, 58 ],
+      "incenter": [ 48.169872981077809, 118.1698729810778 ],
+      "feature": "Trees 1"
+    },
+    {
+      "vertexIDs": [ 33, 32, 49 ],
+      "incenter": [ 46.726165822372757, 91.8959405008111 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 37, 54, 58 ],
+      "incenter": [ 51.934800928953372, 114.6909194736343 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 41, 45, 44 ],
+      "incenter": [ 156.257263777191, 30.817010464003012 ],
+      "feature": "River 3"
+    },
+    {
+      "vertexIDs": [ 60, 59, 14 ],
+      "incenter": [ 84.319468597861132, 84.552079099428937 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 50, 64, 68 ],
+      "incenter": [ 80.290228080922262, 43.614369755063485 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 65, 68, 64 ],
+      "incenter": [ 77.5, 45.669872981077809 ],
+      "feature": "Trees 3"
+    },
+    {
+      "vertexIDs": [ 38, 34, 53 ],
+      "incenter": [ 98.918360970777272, 39.824474149190941 ],
+      "feature": "Bridge 2"
+    },
+    {
+      "vertexIDs": [ 34, 65, 64 ],
+      "incenter": [ 80.8856217223385, 46.53394181937697 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 53, 34, 50 ],
+      "incenter": [ 90.081639029222714, 44.175525850809066 ],
+      "feature": "Bridge 2"
+    },
+    {
+      "vertexIDs": [ 42, 44, 43 ],
+      "incenter": [ 181.89971020744957, 3.3552498912267357 ],
+      "feature": "River 3"
+    },
+    {
+      "vertexIDs": [ 70, 17, 59 ],
+      "incenter": [ 117.45496614943451, 82.296647350222642 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 35, 38, 39 ],
+      "incenter": [ 102.07106781186548, 45.000000000000007 ],
+      "feature": "Bridge 2"
+    },
+    {
+      "vertexIDs": [ 41, 40, 45 ],
+      "incenter": [ 126.48188329323821, 27.383887733213804 ],
+      "feature": "River 3"
+    },
+    {
+      "vertexIDs": [ 62, 59, 60 ],
+      "incenter": [ 81.8301270189222, 81.8301270189222 ],
+      "feature": "Trees 2"
+    },
+    {
+      "vertexIDs": [ 54, 60, 14 ],
+      "incenter": [ 76.560901818370311, 115.55169587360679 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 61, 62, 60 ],
+      "incenter": [ 78.169872981077816, 83.169872981077816 ],
+      "feature": "Trees 2"
+    },
+    {
+      "vertexIDs": [ 3, 15, 18 ],
+      "incenter": [ 145.54636037816735, 160.75203717695052 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 7, 6, 15 ],
+      "incenter": [ 54.729109609017911, 168.55273806744748 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 39, 51, 35 ],
+      "incenter": [ 100.90098048640721, 49.999999999999993 ],
+      "feature": "Bridge 2"
+    },
+    {
+      "vertexIDs": [ 74, 78, 82 ],
+      "incenter": [ 178.79190822216287, 30.977677823507722 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 22, 17, 21 ],
+      "incenter": [ 168.42522552898072, 140.650394274396 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 18, 15, 17 ],
+      "incenter": [ 147.62468905280224, 147.62468905280224 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 20, 19, 22 ],
+      "incenter": [ 171.87250112070765, 146.00213218755331 ],
+      "feature": "Wall 2"
+    },
+    {
+      "vertexIDs": [ 19, 3, 18 ],
+      "incenter": [ 166.20057958510088, 156.71049978245347 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 21, 20, 22 ],
+      "incenter": [ 198.12749887929238, 123.99786781244669 ],
+      "feature": "Wall 2"
+    },
+    {
+      "vertexIDs": [ 3, 7, 15 ],
+      "incenter": [ 103.14954894203852, 177.13670989880467 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 39, 52, 51 ],
+      "incenter": [ 105.09901951359279, 46 ],
+      "feature": "Bridge 2"
+    },
+    {
+      "vertexIDs": [ 39, 40, 52 ],
+      "incenter": [ 105.96670362162708, 44.999999999999993 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 59, 71, 70 ],
+      "incenter": [ 128.0415534691362, 45.817772887918949 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 72, 40, 73 ],
+      "incenter": [ 125.11534717376787, 36.15311493018077 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 17, 70, 41 ],
+      "incenter": [ 146.50088764656138, 54.351972408642538 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 71, 72, 73 ],
+      "incenter": [ 126.33974596215563, 40 ],
+      "feature": "Trees 4"
+    },
+    {
+      "vertexIDs": [ 3, 19, 20 ],
+      "incenter": [ 186.94598524431922, 152.87086471554016 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 78, 42, 83 ],
+      "incenter": [ 183.89644469120657, 18.452677838844085 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 41, 78, 77 ],
+      "incenter": [ 169.30616045964615, 34.263265314396278 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 17, 41, 21 ],
+      "incenter": [ 173.25485849042451, 111.08495283014152 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 77, 78, 76 ],
+      "incenter": [ 171.3397459621556, 35 ],
+      "feature": "Trees 5"
+    },
+    {
+      "vertexIDs": [ 76, 75, 21 ],
+      "incenter": [ 175.73974437365231, 41.648529400652251 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 76, 78, 75 ],
+      "incenter": [ 174.33012701892218, 37.499999999999993 ],
+      "feature": "Trees 5"
+    },
+    {
+      "vertexIDs": [ 75, 74, 80 ],
+      "incenter": [ 180.76687857652394, 35.845770575686011 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 75, 78, 74 ],
+      "incenter": [ 177.49999999999997, 35.669872981077809 ],
+      "feature": "Trees 5"
+    },
+    {
+      "vertexIDs": [ 52, 72, 71 ],
+      "incenter": [ 124.02800102515145, 42.5011431714776 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 52, 40, 72 ],
+      "incenter": [ 119.04090843121777, 37.476075403423096 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 78, 83, 82 ],
+      "incenter": [ 184.23312142347604, 24.154229424313982 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 70, 71, 73 ],
+      "incenter": [ 129.33012701892218, 42.5 ],
+      "feature": "Trees 4"
+    },
+    {
+      "vertexIDs": [ 76, 41, 77 ],
+      "incenter": [ 169.231690777565, 37.558073219682569 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 70, 73, 69 ],
+      "incenter": [ 132.5, 40.6698729810778 ],
+      "feature": "Trees 4"
+    },
+    {
+      "vertexIDs": [ 21, 41, 76 ],
+      "incenter": [ 168.64768256520063, 45.029779624841119 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 70, 69, 41 ],
+      "incenter": [ 136.08058909292495, 41.871635211050773 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 44, 45, 43 ],
+      "incenter": [ 160.607096895428, 16.5156449678389 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 33, 37, 32 ],
+      "incenter": [ 53.554885619254115, 99.423121479541223 ],
+      "feature": "River 2"
+    },
+    {
+      "vertexIDs": [ 56, 13, 57 ],
+      "incenter": [ 44.110601306884945, 123.21301262159783 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 14, 13, 55 ],
+      "incenter": [ 52.310004332411616, 135.07329456754394 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 45, 10, 43 ],
+      "incenter": [ 124.56946621644849, 10.674945427052108 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 81, 82, 80 ],
+      "incenter": [ 188.16987298107782, 28.169872981077809 ],
+      "feature": "Trees 6"
+    },
+    {
+      "vertexIDs": [ 2, 83, 42 ],
+      "incenter": [ 193.33244854896324, 3.7597909176112121 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 80, 82, 83 ],
+      "incenter": [ 187.5, 24.330127018922195 ],
+      "feature": "Trees 6"
+    },
+    {
+      "vertexIDs": [ 74, 81, 80 ],
+      "incenter": [ 187.83809845624754, 30.338004537628894 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 74, 82, 81 ],
+      "incenter": [ 185.11534717376787, 28.84688506981924 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 83, 79, 80 ],
+      "incenter": [ 192.5, 25.669872981077805 ],
+      "feature": "Trees 6"
+    },
+    {
+      "vertexIDs": [ 83, 2, 79 ],
+      "incenter": [ 192.46339368480974, 19.393792610608905 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 37, 30, 32 ],
+      "incenter": [ 49.193996311813251, 101.9458650353432 ],
+      "feature": "River 2"
+    },
+    {
+      "vertexIDs": [ 30, 37, 58 ],
+      "incenter": [ 46.481919721383484, 108.47656424377342 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 36, 37, 33 ],
+      "incenter": [ 66.660841958541525, 72.2018279834276 ],
+      "feature": "River 2"
+    },
+    {
+      "vertexIDs": [ 65, 33, 66 ],
+      "incenter": [ 73.916437906408191, 51.35087546175383 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 34, 33, 65 ],
+      "incenter": [ 79.377732400653329, 51.651277970355622 ],
+      "feature": "BallPark"
+    },
+    {
+      "vertexIDs": [ 42, 41, 44 ],
+      "incenter": [ 167.15988020889995, 26.334879380728417 ],
+      "feature": "River 3"
+    }
+  ]
+}
+

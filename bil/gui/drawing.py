@@ -2,14 +2,31 @@ import random
 from tkinter import LAST
 from shapely.geometry import Point
 
-TRANSLATION_X = 60
-TRANSLATION_Y = 60
-SCALE = 7.2
-
 class Drawing:
+	TRANSLATION_X = None
+	TRANSLATION_Y = None
+	SCALE = None
+
+	@staticmethod
+	def init(dataPrototype):
+		if dataPrototype == "Prototype-1":
+			Drawing.TRANSLATION_X = 60
+			Drawing.TRANSLATION_Y = 60
+			Drawing.SCALE = 7.2
+		elif dataPrototype == "Prototype-2":
+			Drawing.TRANSLATION_X = 10
+			Drawing.TRANSLATION_Y = 205
+			Drawing.SCALE = 3.95
+		elif dataPrototype == "MovingSensor-0":
+			Drawing.TRANSLATION_X = 105
+			Drawing.TRANSLATION_Y = 105
+			Drawing.SCALE = 3.75
+		else:
+			raise RuntimeError("Please set drawing constants for data folder \"%s\"" % dataPrototype)
+
 	@staticmethod
 	def _translateCoords(coord):
-		c = [SCALE * (coord[0] + TRANSLATION_X), SCALE * ((-1 * coord[1]) + TRANSLATION_Y)]
+		c = [Drawing.SCALE * (coord[0] + Drawing.TRANSLATION_X), Drawing.SCALE * ((-1 * coord[1]) + Drawing.TRANSLATION_Y)]
 		return c
 
 	@staticmethod

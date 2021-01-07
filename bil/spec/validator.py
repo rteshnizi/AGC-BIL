@@ -48,4 +48,4 @@ class Validator(object):
 		return self._symbolFunc
 
 	def execute(self, p):
-		self._function(p)
+		return self._function(p)

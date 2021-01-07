@@ -1,0 +1,16 @@
+{
+	"simple-2": {
+		"states": ["START", "S-0", "S-1", "S-2", "END"],
+		"transitions": {
+			"START": ["((T0, False), S-0)"],
+			"S-0": ["((A, True), S-1)", "((A, False), S-2)"],
+			"S-1": ["((B, True), END)"],
+			"S-2": ["((B, False), S-1)"]
+		},
+		"validators": {
+			"A": "lambda p : Geometry.isInside(p, [[31, 44], [54, 44], [54, 1], [31, 1]])",
+			"B": "lambda p : Geometry.isInside(p, [[21, 199], [39, 199], [39, 156], [21, 156]])",
+			"T0": "lambda p : True"
+		}
+	}
+}
