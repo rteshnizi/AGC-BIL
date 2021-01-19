@@ -2,6 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import re as RegEx
 import json
+from typing import Set
 from bil.utils.graph import GraphAlgorithms
 from bil.utils.geometry import Geometry
 from bil.model.connectivityGraph import ConnectivityGraph
@@ -20,6 +21,15 @@ class Transition:
 	def execute(self, pose):
 		return self.validator.execute(pose)
 
+class Penny:
+	"""
+	This is the weirdest name I could use.
+	This represents a penny in what Dr. Shell referred to as a stack of pennies that will track a possible pose and its state
+	"""
+	def __init__(self, state, pose):
+		self.state = state
+		self.pose = pose
+
 class NFA(nx.DiGraph):
 	def __init__(self, specName, states, transitions, validators):
 		super().__init__()
@@ -30,12 +40,8 @@ class NFA(nx.DiGraph):
 		self.START_SYMBOL = "START"
 		self.TERMINAL_SYMBOL = "END"
 		self._fig = None
-		self.activeStates = set()
+		self.activeStates: Set[Penny] = set()
 		self._buildGraph()
-		self.activeStates.add(self.START_SYMBOL)
-		self.visitedStates = set()
-		self._possiblePositions = set()
-		self._graphCounter = 0
 
 	def __repr__(self):
 		return "%s.NFA" % self._specName
@@ -55,35 +61,30 @@ class NFA(nx.DiGraph):
 		if len(observation.fov.sensors) == 0:
 			print("Don't know how to handle no FOV yet")
 			return
-		cGraph = ConnectivityGraph(envMap, observation.fov, self._graphCounter)
-		self._graphCounter += 1
-		condensedGraph = cGraph.condense(self)
+		cGraph = ConnectivityGraph(envMap, observation.fov, self.validators)
+		condensedGraph = cGraph.condense()
 		if prevObservation is None:
 			if len(observation.tracks) == 0:
 				for n in condensedGraph.nodes:
-					if GraphAlgorithms.isShadowRegion(condensedGraph, n): self._possiblePositions.add(n)
+					if GraphAlgorithms.isShadowRegion(condensedGraph, n):
+						self.activeStates.add(Penny(self.START_SYMBOL, n))
 			if len(observation.tracks) > 1: raise RuntimeError("We only work with a single target for now.")
-		newActiveStates = self.activeStates.copy()
-		outBoundEdges = set()
-		for state in self.activeStates:
-			for edge in self.edges(state):
-				outBoundEdges.add(edge)
-		while len(outBoundEdges) > 0:
-			outboundEdge = outBoundEdges.pop()
-			currentState = outboundEdge[0]
-			nextState = outboundEdge[0]
-			transition = self.get_edge_data(outboundEdge[0], outboundEdge[1])["transition"]
-			for p in self._possiblePositions:
-				passed = transition.execute(p)
+		activeStatesCopy: Set[Penny] = self.activeStates.copy()
+		while len(activeStatesCopy) > 0:
+			penny = activeStatesCopy.pop()
+			for outboundEdge in self.edges(penny.state):
+				currentState = outboundEdge[0]
+				nextState = outboundEdge[1]
+				transition = self.get_edge_data(currentState, nextState)["transition"]
+				passed = transition.execute(penny.pose)
 				if passed:
-					nextState = outboundEdge[1]
+					self.activeStates.remove(penny)
 					# While there are non-consuming transitions, we should keep doing traversing them.
-					# So we add them to the outbound edges
 					if not transition.consuming:
-						for edge in self.edges(nextState):
-							outBoundEdges.add(edge)
-				newActiveStates.remove(currentState)
-				newActiveStates.add(nextState)
+						activeStatesCopy.add(Penny(nextState, penny.pose))
+					else:
+						self.activeStates.add(Penny(nextState, penny.pose))
+
 		pass
 
 	def displayGraph(self):

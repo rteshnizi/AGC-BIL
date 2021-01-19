@@ -3,9 +3,11 @@ from bil.parser import EnvironmentParser, ObservationParser, SpecParser
 from bil.model.scenario import Scenario
 from bil.gui.drawing import Drawing
 from bil.gui.app import App
+from bil.spec.lambdas import Prototypes
 
 class Bil(object):
 	def __init__(self, loadFromFile=False):
+		Prototypes.initialize()
 		self.loadFromFile = loadFromFile
 		self.dataPrototype = "Prototype-2"
 		# self.dataPrototype = "Prototype-1"
@@ -32,7 +34,7 @@ class Bil(object):
 		for t in sorted(self.observations):
 			observation = self.observations[t]
 			# for spec in self.specs:
-			spec = self.specs[1]
+			spec = self.specs[0]
 			print("Validating specification %s" % repr(spec.name))
 			# isValid = observation.validate(self.map, self.fov, verbose=False)
 			spec.nfa.read(self.map, observation, previousObservation)

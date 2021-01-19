@@ -7,8 +7,8 @@ class Specification(object):
 		self._specificationDict = specificationDict
 		self._shapeIds = None
 		self._regionSymbols = []
-		self._symbolMap = self._buildSymbolMap()
-		self.nfa = NFA(self.name, self.states, self.transitions, self._symbolMap)
+		self.validators = self._buildSymbolMap()
+		self.nfa = NFA(self.name, self.states, self.transitions, self.validators)
 
 	@property
 	def states(self):
@@ -34,10 +34,10 @@ class Specification(object):
 
 	def render(self, canvas):
 		for symName in self._regionSymbols:
-			region = self._symbolMap[symName].value
+			region = self.validators[symName].value
 			region.render(canvas)
 
 	def clearRender(self, canvas):
 		for symName in self._regionSymbols:
-			region = self._symbolMap[symName].value
+			region = self.validators[symName].value
 			region.clearRender(canvas)

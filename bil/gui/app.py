@@ -6,7 +6,7 @@ from tkinter import filedialog
 from bil.gui.canvas import Canvas
 from bil.model.timedGraph import TimedGraph
 from bil.model.trajectory import Trajectory
-from bil.model.fieldOfView import FieldOfViewRenderer
+from bil.model.fieldOfViewRenderer import FieldOfViewRenderer
 from bil.model.connectivityGraph import ConnectivityGraph
 from bil.utils.graph import GraphAlgorithms
 
@@ -146,7 +146,7 @@ class App(tk.Frame):
 	def showGraph(self):
 		if self.lastDisplayedGraph is not None:
 			self.lastDisplayedGraph.killDisplayedGraph()
-		self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.activeObservation.fov, self._fovIndex)
+		self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.activeObservation.fov, self.spec.validators)
 		self.lastDisplayedGraph.displayGraph(displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def nextFOV(self):
@@ -219,8 +219,8 @@ class App(tk.Frame):
 
 	def condenseGraph(self):
 		if self.lastDisplayedGraph is None:
-			self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.activeObservation.fov, self._fovIndex)
-		condensed = self.lastDisplayedGraph.condense(self.spec.nfa)
+			self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.activeObservation.fov, self.spec.validators)
+		condensed = self.lastDisplayedGraph.condense()
 		GraphAlgorithms.displayGraphAuto(condensed, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def validate(self):

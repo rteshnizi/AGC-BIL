@@ -4,7 +4,8 @@ from abc import ABC, abstractmethod
 
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.observation.pose import Pose
-from bil.utils.geometry import Geometry
+from bil.spec.lambdas import Prototypes, LambdaType
+import bil
 
 class AbstractValidator(ABC):
 	@abstractmethod
@@ -27,12 +28,10 @@ class Validator(object):
 		# for Time, value is a float
 		# myStr = "from bil.utils.geometry import Geometry;" + funcStr + ";"
 		self._function = eval(funcStr)
+		self._funcString = funcStr
 		# for Region, value is a polygonalRegion
 		if self.isRegion:
-			m = RegEx.search(r"(\[[\d,\s\[\]-]*\])", funcStr)
-			pts = m.group(0)
-			pts = json.loads(pts)
-			self.value = PolygonalRegion("sym-%s" % self.name, pts, "BLUE")
+			self.value = PolygonalRegion("sym-%s" % self.name, self._function.spaceTimeSet, "BLUE")
 		else:
 			# TODO: Time executioner
 			pass
@@ -40,12 +39,12 @@ class Validator(object):
 	@property
 	def isRegion(self):
 		"""
-		FIXME: Just for the sake of debugging, anything beginning with T is a time specifier, other symbols are regions
+		Just for the sake of debugging
 		"""
-		return not self.name.startswith("T")
+		return self._function.type == LambdaType.Region
 
 	def __repr__(self):
-		return self._symbolFunc
+		return self._funcString
 
 	def execute(self, p):
 		return self._function(p)

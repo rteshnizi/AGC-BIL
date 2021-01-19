@@ -11,16 +11,16 @@ from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
 
 class ConnectivityGraph(nx.DiGraph):
-	def __init__(self, envMap, fov, graphIndex):
+	def __init__(self, envMap, fov, validators):
 		super().__init__()
 		self._regionNodes = []
 		self._beamNodes = []
 		self._beamSet = set()
 		self.fov = fov
+		self.validators = validators
 		self._fovComponentRegions: List[SensingRegion] = []
 		self.map = envMap
 		self.timestamp = fov.time
-		self.graphIndex = graphIndex
 		self._disjointPolys: List[PolygonalRegion] = []
 		print("Building graph for %s" % self.timestamp)
 		self._buildFromMap(fov)
@@ -45,7 +45,7 @@ class ConnectivityGraph(nx.DiGraph):
 			end = self.nodeToClusterMap[end]
 		return GraphAlgorithms.getBeamName(start, end)
 
-	def condense(self, nfa):
+	def condense(self):
 		if self._condensed is not None: return self._condensed
 		print("Condensing %s" % self.timestamp)
 		self.nodeClusters: Dict[str, Set[str]] = {}
@@ -99,23 +99,23 @@ class ConnectivityGraph(nx.DiGraph):
 
 		# So far we have all the FOV and shadows condensed
 		# Now we need to put the Spec polygons into the Graph
-		for validator in nfa.validators.values():
-			if validator.isRegion:
-				region1 = validator.value
-				condensedGraph.add_node(region1.name)
-				condensedGraph.nodes[region1.name]["timestamp"] = self.timestamp
-				condensedGraph.nodes[region1.name]["graphIndex"] = self.graphIndex
-				condensedGraph.nodes[region1.name]["region"] = region1
-				condensedGraph.nodes[region1.name]["centroid"] = region1.polygon.centroid
-				condensedGraph.nodes[region1.name]["mappedName"] = region1.name
-				self._addCluster(region1.name)
-				for n in self.nodeToClusterMap:
-					if GraphAlgorithms.isBeamNode(n): continue
-					region2 = self.nodes[n]["region"]
-					if Geometry.polygonAndPolygonIntersect(region1.polygon, region2.polygon):
-						condensedGraph.nodes[region1.name]["type"] = "shadow" if isinstance(region2, ShadowRegion) else "sensor"
-						condensedGraph.add_edge(region1.name, self.nodeToClusterMap[n])
-						break
+		# for validatorName in self.validators:
+		# 	validator = self.validators[validatorName]
+		# 	if validator.isRegion:
+		# 		region1 = validator.value
+		# 		condensedGraph.add_node(region1.name)
+		# 		condensedGraph.nodes[region1.name]["timestamp"] = self.timestamp
+		# 		condensedGraph.nodes[region1.name]["region"] = region1
+		# 		condensedGraph.nodes[region1.name]["centroid"] = region1.polygon.centroid
+		# 		condensedGraph.nodes[region1.name]["mappedName"] = region1.name
+		# 		self._addCluster(region1.name)
+		# 		for n in self.nodeToClusterMap:
+		# 			if GraphAlgorithms.isBeamNode(n): continue
+		# 			region2 = self.nodes[n]["region"]
+		# 			if Geometry.polygonAndPolygonIntersect(region1.polygon, region2.polygon):
+		# 				condensedGraph.nodes[region1.name]["type"] = "shadow" if isinstance(region2, ShadowRegion) else "sensor"
+		# 				condensedGraph.add_edge(region1.name, self.nodeToClusterMap[n])
+		# 				break
 
 		print(len(self.nodes))
 		print(len(condensedGraph.nodes))
@@ -135,7 +135,6 @@ class ConnectivityGraph(nx.DiGraph):
 	def _addNode(self, nodeName):
 		self.add_node(nodeName)
 		self.nodes[nodeName]["timestamp"] = self.timestamp
-		self.nodes[nodeName]["graphIndex"] = self.graphIndex
 
 	def _addRegion(self, polygonalRegion):
 		name = polygonalRegion.name
@@ -172,7 +171,14 @@ class ConnectivityGraph(nx.DiGraph):
 		else:
 			self._addSingleSensorRegionConnectedComponent(fovUnion, 0)
 
+	def _isValidatorPolygon(self, polygonName):
+		"""
+		Utility function to check if this polygon is made for a validator region
+		"""
+		return polygonName.startswith("sym-")
+
 	def _buildFromMap(self, fov):
+		# First we create all the nodes with respect to FOV
 		fovUnion = fov.polygon
 		self._addSensorRegionConnectedComponents(fovUnion)
 		for mapR in self.map.regions.values():
@@ -188,20 +194,44 @@ class ConnectivityGraph(nx.DiGraph):
 			else:
 				self._disjointPolys.append(ShadowRegion("%s-0" % (mapR.name), list(zip(*(mapR.polygon.exterior.coords.xy)))))
 
+		# Then we add the edges
 		for p1 in self._disjointPolys:
 			if not isinstance(p1, ShadowRegion): continue
 			if self._getMapRegion(p1.name).isObstacle: continue
 			self._addRegion(p1)
 			for fovRegion in self._fovComponentRegions:
 				e = Geometry.commonEdge(p1.polygon, fovRegion.polygon)
-				if e:
-					self._addBeamNodes(p1.name, fovRegion.name)
+				if e: self._addBeamNodes(p1.name, fovRegion.name)
 			for p2 in self._disjointPolys:
 				if p1 == p2: continue
 				if not isinstance(p2, ShadowRegion): continue
 				if self._getMapRegion(p2.name).isObstacle: continue
 				e = Geometry.commonEdge(p1.polygon, p2.polygon)
 				if e: self.add_edge(p1.name, p2.name)
+
+		# Last we add the nodes for the validators
+		for validatorName in self.validators:
+			validator = self.validators[validatorName]
+			if not validator.isRegion: continue
+			validatorRegion = validator.value
+			j = 0
+			for polygonalRegion in self._disjointPolys:
+				if self._getMapRegion(polygonalRegion.name).isObstacle: continue
+				if not Geometry.polygonAndPolygonIntersect(validatorRegion.polygon, polygonalRegion.polygon): continue
+				insidePolys = Geometry.intersect(validatorRegion.polygon, polygonalRegion.polygon)
+				insidePolys = [p for p in insidePolys if p.length > 0]
+				insidePolys = list(filter(lambda p: not isinstance(p, LineString), insidePolys))
+				for i in range(len(insidePolys)):
+					if isinstance(polygonalRegion, ShadowRegion):
+						validatorPoly = ShadowRegion("%s-%d" % (validatorRegion.name, i + j), list(zip(*(insidePolys[i].exterior.coords.xy))))
+						self._addRegion(validatorPoly)
+						self.add_edge(validatorPoly.name, polygonalRegion.name)
+					else:
+						validatorPoly = PolygonalRegion("%s-%d" % (validatorRegion.name, i + j), list(zip(*(insidePolys[i].exterior.coords.xy))))
+						self._addRegion(validatorPoly)
+						self._addBeamNodes(validatorPoly.name, polygonalRegion.name)
+				j += len(insidePolys)
+
 
 	def getSensorReadings(self, startPose, endPose):
 		startPolygonName = None
