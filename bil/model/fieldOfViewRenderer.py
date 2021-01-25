@@ -19,14 +19,14 @@ class FieldOfViewRenderer:
 	# 		self._chainedGraphThroughTime = TimedGraph(self.cGraphs, spec)
 	# 	return self._chainedGraphThroughTime
 
-	def render(self, envMap, fov, canvas):
+	def render(self, envMap, fov, validators, canvas):
 		if self._previousFov is not None and self._previousFov.time != fov.time: self.clearRender(canvas)
 		for sensorId in fov.sensors:
 			sensor = fov.sensors[sensorId]
 			sensor.region.render(canvas)
 		cGraph = None
 		if fov.time not in self._cGraphCache:
-			cGraph = ConnectivityGraph(envMap, fov)
+			cGraph = ConnectivityGraph(envMap, fov, validators)
 			self._cGraphCache[fov.time] = cGraph
 		else:
 			cGraph = self._cGraphCache[fov.time]

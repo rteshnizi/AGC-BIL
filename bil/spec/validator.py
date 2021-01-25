@@ -23,15 +23,15 @@ class RegionValidator(AbstractValidator):
 		pass
 
 class Validator(object):
-	def __init__(self, name, funcStr):
+	def __init__(self, name, lambdaStr):
 		self.name = name
 		# for Time, value is a float
-		# myStr = "from bil.utils.geometry import Geometry;" + funcStr + ";"
-		self._function = eval(funcStr)
-		self._funcString = funcStr
+		# myStr = "from bil.utils.geometry import Geometry;" + lambdaStr + ";"
+		self.lambdaObj = eval(lambdaStr)
+		self._lambdaString = lambdaStr
 		# for Region, value is a polygonalRegion
 		if self.isRegion:
-			self.value = PolygonalRegion("sym-%s" % self.name, self._function.spaceTimeSet, "BLUE")
+			self.value = PolygonalRegion("sym-%s" % self.name, list(zip(*self.lambdaObj.spaceTimeSet.polygon.exterior.coords.xy)), "BLUE")
 		else:
 			# TODO: Time executioner
 			pass
@@ -41,10 +41,10 @@ class Validator(object):
 		"""
 		Just for the sake of debugging
 		"""
-		return self._function.type == LambdaType.Region
+		return self.lambdaObj.type == LambdaType.Region
 
 	def __repr__(self):
-		return self._funcString
+		return self._lambdaString
 
 	def execute(self, p):
-		return self._function(p)
+		return self.lambdaObj.func(p)

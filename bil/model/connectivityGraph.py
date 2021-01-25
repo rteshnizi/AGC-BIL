@@ -10,6 +10,18 @@ from bil.model.shadowRegion import ShadowRegion
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
 
+class NodeCluster:
+	def __init__(self, cGraph: "ConnectivityGraph", nodes = set()):
+		self._cGraph = cGraph
+		self.nodes = nodes
+		self._polygon = None
+
+	@property
+	def polygon(self):
+		if self._polygon is None:
+			self._polygon = Geometry.union([self._cGraph.nodes[nodeName]["region"].polygon for nodeName in self.nodes])
+		return self._polygon
+
 class ConnectivityGraph(nx.DiGraph):
 	def __init__(self, envMap, fov, validators):
 		super().__init__()
@@ -26,15 +38,17 @@ class ConnectivityGraph(nx.DiGraph):
 		self._buildFromMap(fov)
 		self._fig = None
 		self._condensed = None
-		self._OBSOLETE_condensed = None
+		self.nodeClusters: Dict[str, NodeCluster] = {}
+		self.nodeToClusterMap: Dict[str, str] = {}
 		self._OBSOLETE_nodeClusters: Dict[str, Set[str]] = {}
 		self._OBSOLETE_nodeToClusterMap: Dict[str, str] = {}
+		self._OBSOLETE_condensed = None
 
 	def __repr__(self):
 		return "cGraph-%.2f" % self.timestamp
 
 	def _addCluster(self, node):
-		self.nodeClusters[node] = { node }
+		self.nodeClusters[node] = NodeCluster(self, { node })
 		self.nodeToClusterMap[node] = node
 
 	def _condenseBeam(self, beam):
@@ -48,7 +62,7 @@ class ConnectivityGraph(nx.DiGraph):
 	def condense(self):
 		if self._condensed is not None: return self._condensed
 		print("Condensing %s" % self.timestamp)
-		self.nodeClusters: Dict[str, Set[str]] = {}
+		self.nodeClusters: Dict[str, NodeCluster] = {}
 		self.nodeToClusterMap: Dict[str, str] = {}
 		for n1 in self.nodes:
 			if n1 in self.nodeToClusterMap: continue
@@ -67,14 +81,14 @@ class ConnectivityGraph(nx.DiGraph):
 				# FIXME: This should happen in one DFS not n^2
 				if GraphAlgorithms.isConnectedBfs(self, n1, n2):
 					if n1 in self.nodeToClusterMap:
-						self.nodeClusters[self.nodeToClusterMap[n1]].add(n2)
+						self.nodeClusters[self.nodeToClusterMap[n1]].nodes.add(n2)
 						self.nodeToClusterMap[n2] = self.nodeToClusterMap[n1]
 					elif n2 in self.nodeToClusterMap:
-						self.nodeClusters[self.nodeToClusterMap[n2]].add(n1)
+						self.nodeClusters[self.nodeToClusterMap[n2]].nodes.add(n1)
 						self.nodeToClusterMap[n1] = self.nodeToClusterMap[n2]
 					else:
 						self._addCluster(n1)
-						self.nodeClusters[self.nodeToClusterMap[n1]].add(n2)
+						self.nodeClusters[self.nodeToClusterMap[n1]].nodes.add(n2)
 						self.nodeToClusterMap[n2] = self.nodeToClusterMap[n1]
 
 		# We found the nodes
@@ -231,7 +245,6 @@ class ConnectivityGraph(nx.DiGraph):
 						self._addRegion(validatorPoly)
 						self._addBeamNodes(validatorPoly.name, polygonalRegion.name)
 				j += len(insidePolys)
-
 
 	def getSensorReadings(self, startPose, endPose):
 		startPolygonName = None

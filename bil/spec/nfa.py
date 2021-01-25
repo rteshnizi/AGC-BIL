@@ -3,9 +3,12 @@ import matplotlib.pyplot as plt
 import re as RegEx
 import json
 from typing import Set
+
+from bil.model.connectivityGraph import ConnectivityGraph
 from bil.utils.graph import GraphAlgorithms
 from bil.utils.geometry import Geometry
-from bil.model.connectivityGraph import ConnectivityGraph
+from bil.observation.observations import Observation
+from bil.spec.spaceTime import SpaceTimeSet
 
 class Transition:
 	def __init__(self, specifier, validators):
@@ -29,6 +32,16 @@ class Penny:
 	def __init__(self, state, pose):
 		self.state = state
 		self.pose = pose
+
+	def __repr__(self):
+		return "(%s, %s)" % (self.state, self.pose)
+
+	def __hash__(self):
+		return hash(repr(self))
+
+	def getShapelyPolygon(self, cGraph: ConnectivityGraph):
+		cluster = cGraph.nodeToClusterMap[self.pose]
+		return cGraph.nodeClusters[cluster].polygon
 
 class NFA(nx.DiGraph):
 	def __init__(self, specName, states, transitions, validators):
@@ -57,7 +70,7 @@ class NFA(nx.DiGraph):
 				toState = matches.group(2)
 				self.add_edge(fromState, toState, transition=transition)
 
-	def read(self, envMap, observation, prevObservation):
+	def read(self, envMap, observation: Observation, prevObservation):
 		if len(observation.fov.sensors) == 0:
 			print("Don't know how to handle no FOV yet")
 			return
@@ -72,30 +85,38 @@ class NFA(nx.DiGraph):
 		activeStatesCopy: Set[Penny] = self.activeStates.copy()
 		while len(activeStatesCopy) > 0:
 			penny = activeStatesCopy.pop()
-			for outboundEdge in self.edges(penny.state):
+			spaceSet = penny.getShapelyPolygon(cGraph)
+			spaceTimeSet = SpaceTimeSet(spaceSet, observation.time)
+			for outboundEdge in self.out_edges(penny.state):
 				currentState = outboundEdge[0]
 				nextState = outboundEdge[1]
 				transition = self.get_edge_data(currentState, nextState)["transition"]
-				passed = transition.execute(penny.pose)
+				passed = transition.execute(spaceTimeSet)
 				if passed:
-					self.activeStates.remove(penny)
+					if penny in self.activeStates: self.activeStates.remove(penny) # Non-consuming pennies are not in this set
 					# While there are non-consuming transitions, we should keep doing traversing them.
 					if not transition.consuming:
 						activeStatesCopy.add(Penny(nextState, penny.pose))
 					else:
 						self.activeStates.add(Penny(nextState, penny.pose))
-
+				else:
+					self.activeStates.add(penny)
 		pass
 
 	def displayGraph(self):
 		fig = plt.figure(len(GraphAlgorithms._allFigs))
 		GraphAlgorithms._allFigs.add(fig)
 		pos = nx.spring_layout(self)
-		nx.draw_networkx_nodes(self, pos, node_color='palegreen')
+		activeStates = { penny.state for penny in self.activeStates }
+		inactiveStates = set(self.nodes) - activeStates
+		nx.draw_networkx_nodes(self, pos, nodelist=activeStates, node_color='palegreen')
+		nx.draw_networkx_nodes(self, pos, nodelist=inactiveStates, node_color='tomato')
 		nx.draw_networkx_edges(self, pos)
 		nx.draw_networkx_labels(self, pos, font_family="DejaVu Sans", font_size=10)
 		edgeLabel = nx.get_edge_attributes(self, "transition")
 		nx.draw_networkx_edge_labels(self, pos, labels = edgeLabel)
+		pennyText = [repr(penny) for penny in self.activeStates]
+		plt.annotate("\n".join(pennyText), xy=(0.01, 0), xycoords='axes fraction')
 		plt.axis("off")
 		fig.show()
 		self._fig = fig

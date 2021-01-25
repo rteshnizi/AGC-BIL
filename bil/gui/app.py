@@ -33,7 +33,10 @@ class App(tk.Frame):
 		super().__init__(self.master)
 		self.fovLabel = tk.StringVar(master=self.master)
 		self._fovIndex = 0
-		self.fovLabel.set(self._fovLabel)
+		self.fovLabel.set(self._fovLabelText)
+		self.validationBtnLabel = tk.StringVar(master=self.master)
+		self._validationIndex = 0
+		self.validationBtnLabel.set(self._validationBtnLabelText)
 		self.specDropdownValue = tk.StringVar(self.master)
 		self.specDropdownValue.set("simple-2") # set the default option
 		self._dbg = {
@@ -75,7 +78,11 @@ class App(tk.Frame):
 		self.spec.render(self.canvas.tkCanvas)
 
 	@property
-	def _fovLabel(self):
+	def _validationBtnLabelText(self):
+		return "Validate T = %.2f" % self.bil.observations.timeArray[self._validationIndex]
+
+	@property
+	def _fovLabelText(self):
 		return "0 ≤ FOV %d ≤ %d" % (self._fovIndex, self.timeSteps)
 
 	def _onClose(self):
@@ -96,14 +103,14 @@ class App(tk.Frame):
 
 	def _renderFOV(self):
 		if not self.shouldShowFOV: return
-		self.fovRenderer.render(self.bil.map, self.activeObservation.fov, self.canvas.tkCanvas)
+		self.fovRenderer.render(self.bil.map, self.observationToRender.fov, self.spec.validators, self.canvas.tkCanvas)
 
 	def _changeFov(self, showNext: bool):
 		self._clearFOV()
 		self._fovIndex += 1 if showNext else -1
 		self._fovIndex = min(self.timeSteps, self._fovIndex)
 		self._fovIndex = max(0, self._fovIndex)
-		self.fovLabel.set(self._fovLabel)
+		self.fovLabel.set(self._fovLabelText)
 		self._toggleTrajectory(force=True)
 		self._renderFOV()
 
@@ -136,7 +143,11 @@ class App(tk.Frame):
 		return next(spec for spec in self.bil.specs if spec.name == self.specDropdownValue.get())
 
 	@property
-	def activeObservation(self):
+	def observationToValidate(self):
+		return self.bil.observations.getObservationByIndex(self._validationIndex)
+
+	@property
+	def observationToRender(self):
 		return self.bil.observations.getObservationByIndex(self._fovIndex)
 
 	def showSpecGraph(self):
@@ -146,7 +157,7 @@ class App(tk.Frame):
 	def showGraph(self):
 		if self.lastDisplayedGraph is not None:
 			self.lastDisplayedGraph.killDisplayedGraph()
-		self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.activeObservation.fov, self.spec.validators)
+		self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.observationToRender.fov, self.spec.validators)
 		self.lastDisplayedGraph.displayGraph(displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def nextFOV(self):
@@ -162,10 +173,14 @@ class App(tk.Frame):
 	def chainAll(self):
 		GraphAlgorithms.displayGraphAuto(self.bil.fieldOfView.chainedGraphThroughTime(self.spec), displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
-	def _createButton(self, row, col, text, callback):
+	def _createButton(self, row, col, text, callback, textVariable=None):
 		tk.Grid.columnconfigure(self.frame, col, weight=1)
-		btn = tk.Button(self.frame)
-		btn["text"] = text
+		btn = None
+		if textVariable is not None:
+			btn = tk.Button(self.frame, textvariable=textVariable)
+		else:
+			btn = tk.Button(self.frame)
+			btn["text"] = text
 		btn["command"] = callback
 		btn.grid(row=row, column=col, sticky=tk.N + tk.S + tk.E + tk.W)
 
@@ -191,7 +206,7 @@ class App(tk.Frame):
 		self._createButton(row, column, "Chain All", self.chainAll)
 		column += 1
 
-		self._createButton(row, column, "Validate", self.validate)
+		self._createButton(row, column, "Validate", self.validate, self.validationBtnLabel)
 		column += 1
 
 		self._createButton(row, column, "Spec Graph", self.showSpecGraph)
@@ -219,9 +234,11 @@ class App(tk.Frame):
 
 	def condenseGraph(self):
 		if self.lastDisplayedGraph is None:
-			self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.activeObservation.fov, self.spec.validators)
+			self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.observationToRender.fov, self.spec.validators)
 		condensed = self.lastDisplayedGraph.condense()
 		GraphAlgorithms.displayGraphAuto(condensed, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def validate(self):
-		self._validateCallback()
+		self._validateCallback(self.observationToValidate)
+		self._validationIndex += 1
+		self.validationBtnLabel.set(self._validationBtnLabelText)
