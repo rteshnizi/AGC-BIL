@@ -81,7 +81,12 @@ class NFA(nx.DiGraph):
 				for n in condensedGraph.nodes:
 					if GraphAlgorithms.isShadowRegion(condensedGraph, n):
 						self.activeStates.add(Penny(self.START_SYMBOL, n))
-			if len(observation.tracks) > 1: raise RuntimeError("We only work with a single target for now.")
+			elif len(observation.tracks) == 1:
+				for n in condensedGraph.nodes:
+					if GraphAlgorithms.isBeamNode(n): continue
+					# cGraph. # FIXME: Start here, make sure to remove the shadows that are not connected anymore
+				self.activeStates.add(Penny(self.START_SYMBOL, n))
+			else: raise RuntimeError("We only work with a single target for now.")
 		activeStatesCopy: Set[Penny] = self.activeStates.copy()
 		while len(activeStatesCopy) > 0:
 			penny = activeStatesCopy.pop()

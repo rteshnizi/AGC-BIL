@@ -34,9 +34,8 @@ class Bil(object):
 		print("Updating specs with %s" % repr(observation))
 		# for spec in self.specs:
 		spec = self.specs[0]
-		spec.nfa.killDisplayedGraph()
+		# spec.nfa.killDisplayedGraph()
 		print("Validating specification %s" % repr(spec.name))
-		# isValid = observation.validate(self.map, self.fov, verbose=False)
 		spec.nfa.read(self.map, observation, self.previousObservation)
 		self.previousObservation = observation
 		spec.nfa.displayGraph()

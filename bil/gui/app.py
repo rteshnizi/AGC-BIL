@@ -38,7 +38,7 @@ class App(tk.Frame):
 		self._validationIndex = 0
 		self.validationBtnLabel.set(self._validationBtnLabelText)
 		self.specDropdownValue = tk.StringVar(self.master)
-		self.specDropdownValue.set("simple-2") # set the default option
+		self.specDropdownValue.set("simple-1") # set the default option
 		self._dbg = {
 			"Print Mouse": tk.IntVar(master=self.master, value=0),
 			"Render Trajectory": tk.IntVar(master=self.master, value=1),
@@ -239,6 +239,10 @@ class App(tk.Frame):
 		GraphAlgorithms.displayGraphAuto(condensed, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def validate(self):
+		self._clearFOV()
+		self._dbg["Show FOV"].set(1)
+		self._fovIndex = self._validationIndex - 1
+		self.nextFOV()
 		self._validateCallback(self.observationToValidate)
 		self._validationIndex += 1
 		self.validationBtnLabel.set(self._validationBtnLabelText)

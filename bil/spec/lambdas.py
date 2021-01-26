@@ -47,15 +47,24 @@ class Prototypes:
 
 	@staticmethod
 	def funcP2A(mySpaceTime: SpaceTimeSet, spaceTimeOfQuery: SpaceTimeSet):
-		return Geometry.intersect(mySpaceTime.polygon, spaceTimeOfQuery.polygon)
+		return Prototypes.funcIntersectionCheck(mySpaceTime.polygon, spaceTimeOfQuery.polygon)
 
 	@staticmethod
 	def funcP2B(mySpaceTime: SpaceTimeSet, spaceTimeOfQuery: SpaceTimeSet):
-		return Geometry.intersect(mySpaceTime.polygon, spaceTimeOfQuery.polygon)
+		return Prototypes.funcIntersectionCheck(mySpaceTime.polygon, spaceTimeOfQuery.polygon)
 
 	@staticmethod
 	def funcP2C(mySpaceTime: SpaceTimeSet, spaceTimeOfQuery: SpaceTimeSet):
-		return Geometry.intersect(mySpaceTime.polygon, spaceTimeOfQuery.polygon)
+		return Prototypes.funcIntersectionCheck(mySpaceTime.polygon, spaceTimeOfQuery.polygon)
+
+	@staticmethod
+	def funcIntersectionCheck(poly1, poly2):
+		intersection = Geometry.intersect(poly1, poly2)
+		try:
+			return intersection.area > 0
+		except:
+			return intersection[0].area > 0
+		return False
 
 	@staticmethod
 	def funcP2T0(mySpaceTime: SpaceTimeSet, spaceTimeOfQuery: SpaceTimeSet):

@@ -1,6 +1,6 @@
-from shapely.geometry import LineString, MultiLineString, Point, Polygon
+from shapely.geometry import LineString, MultiLineString, Point, Polygon, MultiPolygon
 from shapely.ops import cascaded_union
-from typing import List
+from typing import List, Union
 from math import sqrt, cos, sin, atan2, degrees
 from functools import reduce
 import operator
@@ -120,22 +120,25 @@ class Geometry:
 		return r
 
 	@staticmethod
-	def intersect(p1: Polygon, p2: Polygon) -> List[Polygon]:
+	def intersect(p1: Polygon, p2: Polygon) -> Union[List[Polygon], MultiPolygon]:
+		"""
+		Returns a List of the instersection polygon(s)
+		"""
 		intersection = p1.intersection(p2)
 		try:
 			if len(intersection) > 0:
-				return list(intersection)
+				return intersection
 			raise RuntimeError("intersection should never be empty")
 		except:
-			# Assumption here is that if it throws there is one element
+			# Assumption here is that if it throws it's a Polygon
 			return [intersection]
 
 	@staticmethod
-	def nonOverlapping(p1: Polygon, p2: Polygon) -> List[Polygon]:
+	def nonOverlapping(p1: Polygon, p2: Polygon) -> Union[List[Polygon], MultiPolygon]:
 		nonoverlap = (p1.symmetric_difference(p2)).difference(p2)
 		try:
 			if len(nonoverlap) > 0:
-				return list(nonoverlap)
+				return nonoverlap
 			raise RuntimeError("Nonoverlap should never be empty")
 		except:
 			# Assumption here is that if it throws there is one element
