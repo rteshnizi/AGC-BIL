@@ -1,12 +1,14 @@
-from typing import Dict
+from typing import Dict, Tuple
 from bil.observation.pose import Pose
+from bil.observation.track import Track
 from bil.model.trajectory import Trajectory
 
 class Observation:
 	def __init__(self, time, fov, tracks):
 		self.time = time
 		self.fov = fov
-		self.tracks = tracks
+		# Key is (time, trackId)
+		self.tracks: Dict[Tuple[float, int], Track] = tracks
 
 	def __repr__(self):
 		return "Obs-%s" % repr(self.time)

@@ -82,10 +82,22 @@ class NFA(nx.DiGraph):
 					if GraphAlgorithms.isShadowRegion(condensedGraph, n):
 						self.activeStates.add(Penny(self.START_SYMBOL, n))
 			elif len(observation.tracks) == 1:
+				foundPolygon = False
 				for n in condensedGraph.nodes:
 					if GraphAlgorithms.isBeamNode(n): continue
-					# cGraph. # FIXME: Start here, make sure to remove the shadows that are not connected anymore
-				self.activeStates.add(Penny(self.START_SYMBOL, n))
+					track = observation.tracks[next(iter(observation.tracks))]
+					if Geometry.isXyInsidePolygon(track.pose.x, track.pose.y, cGraph.nodeClusters[n].polygon):
+						self.activeStates.add(Penny(self.START_SYMBOL, n))
+						foundPolygon = True
+						break
+				if not foundPolygon: raise RuntimeError("Track Pose %s is not inside any polygon." % repr(track.pose))
+			else: raise RuntimeError("We only work with a single target for now.")
+		else:
+			# FIXME: Start here, and remove shadows that cannot be connected
+			if len(observation.tracks) == 0:
+				pass
+			elif len(observation.tracks) == 1:
+				pass
 			else: raise RuntimeError("We only work with a single target for now.")
 		activeStatesCopy: Set[Penny] = self.activeStates.copy()
 		while len(activeStatesCopy) > 0:
