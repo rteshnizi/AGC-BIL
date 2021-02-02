@@ -10,7 +10,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 # plt.rcParams['animation.ffmpeg_path'] = '/usr/bin/ffmpeg'
 import matplotlib.animation as animation
-from matplotlib.patches import Ellipse, Rectangle, FancyArrowPatch
+from matplotlib.patches import Ellipse, Rectangle, FancyArrowPatch, Polygon
 from scipy.stats.distributions import chi2
 
 
@@ -57,7 +57,7 @@ class Ttl(object):
 
 		print("TTL sim starts")
 		self.sim(isMoving, isObsDyn, isRotate, isFalseAlarm)
-		print("TTL sim ends, tracking results saved in data/obs.json")
+		# print("TTL sim ends, tracking results saved in data/obs.json")
 
 	def sim(self, isMoving, isObsDyn, isRotate, isFalseAlarm):
 		arrow_dia = 5
@@ -178,6 +178,14 @@ class Ttl(object):
 				if obj._width > 1:
 					obj.remove()
 
+			# add obstacles
+			for obs in self.obstacles:
+				xy = np.array(obs["xy"])
+				color = obs["color"]
+				rect = Polygon(xy, lw = 1, linestyle = '-',
+							color=color)
+
+				ax.add_artist(rect)
 			# add tracks
 			x, y = [], []
 			for track in est[i]:
@@ -216,17 +224,8 @@ class Ttl(object):
 							color=self.sensor_para_list[j]["color"])
 				ax.add_artist(e)
 			
-			# add obstacles
-			for obs in self.obstacles:
-				rect = Rectangle((obs["position"][0], obs["position"][1]), 
-							obs["size"][0], obs["size"][1],
-							angle = 0,
-							lw = 1,
-							linestyle = '-',
-							color='yellow')
-				ax.add_artist(rect)
 
-			timer.set_text("t = %s" % (self.dt*i + self.dt))
+			# timer.set_text("t = %s" % (self.dt*i + self.dt))
 
 			return real_point, estimationPT, timer
 
@@ -234,8 +233,9 @@ class Ttl(object):
 									interval=10, blit=True, init_func=init, repeat = False)
 		
 		filename = os.path.join(path, "data", 'Jan22_demo_'+str(self.scenario)+'_Visual.mp4')
-		ani.save(filename, fps=20)
+		ani.save(filename, fps=5)
 		plt.close()
+		print("TTL sim ends, tracking results saved in", filename)
 
 	def RotationMatrix(self, theta):
 		return np.matrix([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
