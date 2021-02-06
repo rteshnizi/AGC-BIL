@@ -2,11 +2,9 @@ from abc import ABC
 from typing import Tuple
 import json
 import os
-import numpy as np
 
 from bil.observation.observations import Observations, Observation
 from bil.observation.fov import FOV
-from bil.observation.pose import Pose
 from bil.observation.sensor import Sensor
 from bil.observation.track import Track
 from bil.model.featureMap import FeatureMap

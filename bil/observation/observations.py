@@ -1,5 +1,4 @@
 from typing import Dict, Tuple
-from bil.observation.pose import Pose
 from bil.observation.track import Track
 from bil.model.trajectory import Trajectory
 

@@ -2,7 +2,6 @@ from enum import Enum
 from functools import partial
 from shapely.geometry import Polygon
 
-from bil.observation.pose import Pose
 from bil.spec.spaceTime import SpaceTimeSet
 from bil.utils.geometry import Geometry
 from bil.utils.python import ObjectLiteral

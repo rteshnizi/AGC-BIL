@@ -1,6 +1,5 @@
 import os
 from bil.parser import EnvironmentParser, ObservationParser, SpecParser
-from bil.model.scenario import Scenario
 from bil.gui.drawing import Drawing
 from bil.gui.app import App
 from bil.spec.lambdas import Prototypes
