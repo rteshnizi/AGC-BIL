@@ -15,7 +15,7 @@ from scipy.stats.distributions import chi2
 
 
 class Ttl(object):
-	def __init__(self, bil=None, scenario=-1):
+	def __init__(self, bil=None, scenario=-1, frequency = 0.5):
 		self.bil = bil
 		# read sensor parameter
 		path = os.getcwd()
@@ -24,11 +24,14 @@ class Ttl(object):
 			data = json.load(json_file)
 
 		self.sensor_para_list = data["sensors"]
+		self.time_to_expand = 1.0
 		self.dt = data["dt"]
 		self.obstacles = data["obstacles"]
 		# 2. Sequantial JPDA, centralized way
 		self.traj = data["trajectory"]
-		self.step_num = data["run_num"]
+
+		self.interpolation(frequency)
+		self.step_num = len(self.traj)
 		
 		# 3. scenario number
 		self.scenario = scenario  # available number: 1, 2
@@ -39,15 +42,28 @@ class Ttl(object):
 		self.policy[2] = [[0, 0]] * self.step_num
 		self.policy[1] = [[0, 0]] * self.step_num
 		if self.scenario == 1:
-			for i in range(16, 27):
-				self.policy[1][i] = [-1.5, 3.5]
+			for i in range(16 * self.time_to_expand, 27 * self.time_to_expand):
+				self.policy[1][i] = [-1.5 / self.time_to_expand, 3.5 / self.time_to_expand]
 		elif self.scenario == 2:
-			for i in range(10, 16):
-				self.policy[1][i] = [-2, 4.6]
-			for i in range(17, 26):
-				self.policy[1][i] = [-0.625, 1.5]
-			for i in range(27, 30):
-				self.policy[1][i] = [5.0/3, -4]
+			for i in range(10 * self.time_to_expand, 16 * self.time_to_expand):
+				self.policy[1][i] = [-2 / self.time_to_expand, 4.6 / self.time_to_expand]
+			for i in range(17 * self.time_to_expand, 26 * self.time_to_expand):
+				self.policy[1][i] = [-0.625 / self.time_to_expand, 1.5 / self.time_to_expand]
+			for i in range(27 * self.time_to_expand, 30 * self.time_to_expand):
+				self.policy[1][i] = [1.66667 / self.time_to_expand, -4 / self.time_to_expand]
+
+	def interpolation(self, frequency):
+		self.time_to_expand = int(self.dt / (1 / frequency))
+		new_traj = []
+		for i in range(len(self.traj) - 1):
+			x1 = self.traj[i]
+			x2 = self.traj[i+1]
+			dx = (x2[0] - x1[0]) / self.time_to_expand
+			dy = (x2[1] - x1[1]) / self.time_to_expand
+			for j in range(self.time_to_expand):
+				new_traj.append([x1[0] + j * dx, x1[1] + j * dy])
+		self.traj = new_traj
+		self.dt = self.dt / self.time_to_expand
 
 	def run(self):
 		isMoving = True
@@ -74,8 +90,8 @@ class Ttl(object):
 
 		centralized_fusor = cenAgent(self.sensor_para_list, self.dt, 
 				isObsdyn=isObsDyn, isRotate=isRotate, isSimulation=True)
-		centralized_fusor.tracker.ConfirmationThreshold = [1, 2]
-		centralized_fusor.tracker.DeletionThreshold = [3, 5]
+		centralized_fusor.tracker.ConfirmationThreshold = [3, 4]
+		centralized_fusor.tracker.DeletionThreshold = [3, 8]
 
 		for j in range(self.step_num):
 			t = time_set[j]
