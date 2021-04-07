@@ -1,3 +1,4 @@
+from shapely.geometry import Polygon
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.utils.geometry import Geometry
 
@@ -5,8 +6,12 @@ COLOR_PALETTE = ["Green", "Purple", "Gold"]
 NUM_COLORS = len(COLOR_PALETTE)
 
 class SensingRegion(PolygonalRegion):
-	def __init__(self, name, coords, timestamp, idNum, sortCoordinatesClockwise=False):
-		super().__init__(name, coords, COLOR_PALETTE[idNum % NUM_COLORS], sortCoordinatesClockwise=sortCoordinatesClockwise)
+	"""
+	coords will be used to create the polygon.
+	If polygon is given, coords arg will be ignored.
+	"""
+	def __init__(self, name: str, coords: Geometry.CoordsList, timestamp: float, idNum: int, polygon: Polygon = None):
+		super().__init__(name, coords, COLOR_PALETTE[idNum % NUM_COLORS], polygon=polygon)
 		self.timestamp = timestamp
 		self._renderLineWidth = 4
 

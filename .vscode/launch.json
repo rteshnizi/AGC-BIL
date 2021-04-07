@@ -39,6 +39,18 @@
 				"program": "${workspaceFolder}/main.py",
 				"args": ["bil"]
 			},
+		},
+		{
+			"name": "Reza Test",
+			"type": "python",
+			"request": "launch",
+			"console": "integratedTerminal",
+			"windows": {
+				"program": "${workspaceFolder}\\bil\\tests\\cgalTest.py",
+			},
+			"linux": {
+				"program": "${workspaceFolder}/bil/tests/cgalTest.py",
+			},
 		}
 	]
 }

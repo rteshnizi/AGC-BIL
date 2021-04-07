@@ -22,7 +22,6 @@ class Lambda:
 
 	def __repr__(self):
 		return "λ(%s, %s)" % (self._originalFuncName, self.type.name)
-
 class Prototypes:
 	"""
 	Each object literal represents one spec's validators
@@ -32,6 +31,7 @@ class Prototypes:
 	* the second one is the space-time of the NFA
 	"""
 	P2 = None
+	TET1 = None
 	@staticmethod
 	def initialize():
 		Prototypes.P2 = ObjectLiteral(
@@ -41,6 +41,11 @@ class Prototypes:
 			A = Lambda(Prototypes.funcP2A, [[40, 30], [60, 30], [60, 20], [40, 20]], LambdaType.Region),
 			B = Lambda(Prototypes.funcP2B, [[30, 180], [50, 180], [50, 170], [30, 170]], LambdaType.Region),
 			C = Lambda(Prototypes.funcP2C, [[180, 140], [195, 140], [195, 160], [180, 160]], LambdaType.Region),
+			T0 = Lambda(Prototypes.funcP2T0, 10, LambdaType.Time)
+		)
+		Prototypes.TET1 = ObjectLiteral(
+			A = Lambda(Prototypes.funcP2A, [[10, 40], [20, 40], [20, 30], [10, 30]], LambdaType.Region),
+			B = Lambda(Prototypes.funcP2B, [[90, 40], [80, 40], [80, 30], [90, 30]], LambdaType.Region),
 			T0 = Lambda(Prototypes.funcP2T0, 10, LambdaType.Time)
 		)
 

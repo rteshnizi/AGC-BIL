@@ -2,10 +2,10 @@ from shapely.geometry import Point
 
 class Pose:
 	def __init__(self, time, x, y, angleFromX):
-		self.time = time
-		self.x = x
-		self.y = y
-		self.angleFromX = angleFromX
+		self.time: float = time
+		self.x: float = x
+		self.y: float = y
+		self.angleFromX: float = angleFromX
 		self.pt = Point(x, y)
 		# FIXME: Set when deletedTracks is set and when new ID is detected in tracks dict
 		self.spawn = False

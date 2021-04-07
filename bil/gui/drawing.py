@@ -8,7 +8,7 @@ class Drawing:
 	SCALE = None
 
 	@staticmethod
-	def init(dataPrototype):
+	def init(dataPrototype: str):
 		if dataPrototype == "Prototype-1":
 			Drawing.TRANSLATION_X = 60
 			Drawing.TRANSLATION_Y = 60
@@ -21,6 +21,10 @@ class Drawing:
 			Drawing.TRANSLATION_X = 105
 			Drawing.TRANSLATION_Y = 105
 			Drawing.SCALE = 3.75
+		elif dataPrototype.startswith("TemporalEdgeTest"):
+			Drawing.TRANSLATION_X = 10
+			Drawing.TRANSLATION_Y = 125
+			Drawing.SCALE = 5
 		else:
 			raise RuntimeError("Please set drawing constants for data folder \"%s\"" % dataPrototype)
 

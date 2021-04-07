@@ -1,8 +1,4 @@
-from bil.observation.fov import FOV
-from bil.utils.graph import GraphAlgorithms
-from bil.model.sensingRegion import SensingRegion
 from bil.model.connectivityGraph import ConnectivityGraph
-from bil.model.timedGraph import TimedGraph
 
 class FieldOfViewRenderer:
 	"""
@@ -13,11 +9,6 @@ class FieldOfViewRenderer:
 		self._previousCGraph = None
 		# Utility variable to cache the cGraphs
 		self._cGraphCache = {}
-
-	# def chainedGraphThroughTime(self, spec):
-	# 	if self._chainedGraphThroughTime is None:
-	# 		self._chainedGraphThroughTime = TimedGraph(self.cGraphs, spec)
-	# 	return self._chainedGraphThroughTime
 
 	def render(self, envMap, fov, validators, canvas):
 		if self._previousFov is not None and self._previousFov.time != fov.time: self.clearRender(canvas)

@@ -1,12 +1,26 @@
 from shapely.geometry import LineString, MultiLineString, Point, Polygon, MultiPolygon
 from shapely.ops import cascaded_union
-from typing import List, Union
-from math import sqrt, cos, sin, atan2, degrees
+from typing import List, Union, Tuple, Dict
+from math import sqrt, cos, sin, atan2, degrees, inf
 from functools import reduce
 import operator
 
 class Geometry:
-	EPSILON = 0.01
+	EPSILON = 0.001
+	Vector = Tuple[float, float]
+	Coords = Tuple[float, float]
+	CoordsList = List[Coords]
+	CoordsMap = Dict[Coords, Coords]
+
+	@staticmethod
+	def vectorsAreEqual(vect1: Vector, vect2: Vector, withinEpsilon = True) -> bool:
+		d1 = Geometry.distanceFromVects(vect1, vect2)
+		margin = Geometry.EPSILON if withinEpsilon else 0
+		return d1 <= margin
+
+	@staticmethod
+	def vectLength(x, y) -> float:
+		return sqrt((y * y) + (x * x))
 
 	@staticmethod
 	def sortCoordinatesClockwise(coords: list):
@@ -25,13 +39,26 @@ class Geometry:
 
 	@staticmethod
 	def distance(x1, y1, x2, y2) -> float:
-		dx = x2 - x1
-		dy = y2 - y1
-		length = sqrt((dy * dy) + (dx * dx))
+		vect = Geometry.distanceVect(x1, y1, x2, y2)
+		length = Geometry.vectLength(vect[0], vect[1])
 		return length
 
 	@staticmethod
-	def getUnitVector(x, y) -> tuple:
+	def distanceFromVects(vect1: Vector, vect2: Vector) -> float:
+		return Geometry.distance(vect1[0], vect1[1], vect2[0], vect2[1])
+
+	@staticmethod
+	def distanceVect(x1, y1, x2, y2) -> Vector:
+		dx = x2 - x1
+		dy = y2 - y1
+		return (dx, dy)
+
+	@staticmethod
+	def distanceVectFromPts(pt1: Point, pt2: Point) -> Vector:
+		return Geometry.distanceVect(pt1.x, pt1.y, pt2.x, pt2.y)
+
+	@staticmethod
+	def getUnitVector(x, y) -> Vector:
 		"""
 		Returns a tuple (x, y) of a vector.
 		"""
@@ -39,7 +66,7 @@ class Geometry:
 		return (x / length, y / length)
 
 	@staticmethod
-	def getUnitVectorFromAngle(theta) -> tuple:
+	def getUnitVectorFromAngle(theta) -> Vector:
 		"""
 		theta is the angle w.r.t X axis
 		Returns a tuple (x, y) of a vector.
@@ -103,12 +130,24 @@ class Geometry:
 		return LineString([(xStart, yStart), (xEnd, yEnd)])
 
 	@staticmethod
+	def lineSegmentSlope(segment: LineString) -> float:
+		x11, y11 = segment.coords[0]
+		x12, y12 = segment.coords[1]
+		if x12 - x11 == 0: return inf
+		slope = (y12 - y11) / (x12 - x11)
+		return slope
+
+	@staticmethod
 	def polygonAndPolygonIntersect(p1: Polygon, p2: Polygon):
 		return p1.intersects(p2)
 
 	@staticmethod
 	def union(polyList: List[Polygon]) -> Polygon:
 		return cascaded_union(polyList)
+
+	@staticmethod
+	def subtract(poly1: Polygon, poly2: Polygon) -> Polygon:
+		return poly1.difference(poly2)
 
 	@staticmethod
 	def intersectLineSegments(l1: LineString, l2: LineString):
@@ -134,8 +173,10 @@ class Geometry:
 			return [intersection]
 
 	@staticmethod
-	def nonOverlapping(p1: Polygon, p2: Polygon) -> Union[List[Polygon], MultiPolygon]:
-		nonoverlap = (p1.symmetric_difference(p2)).difference(p2)
+	def shadows(mapRegionPoly: Polygon, fovPoly: Polygon) -> Union[List[Polygon], MultiPolygon]:
+		nonoverlap = mapRegionPoly.difference(fovPoly) # difference() is wrong because it excludes the boundaries of fov from the shadows
+		# nonoverlap = mapRegionPoly.difference(mapRegionPoly.intersection(fovPoly)) # difference() is wrong because it excludes the boundaries of fov from the shadows
+		# nonoverlap = mapRegionPoly.symmetric_difference(fovPoly).difference(fovPoly)
 		try:
 			if len(nonoverlap) > 0:
 				return nonoverlap
@@ -145,9 +186,33 @@ class Geometry:
 			return [nonoverlap]
 
 	@staticmethod
-	def commonEdge(p1: Polygon, p2: Polygon):
+	def _haveOverlappingEdge(p1: Polygon, p2: Polygon) -> bool:
+		"""
+		DEPRECATED: https://github.com/Toblerity/Shapely/issues/1101
+		"""
 		# if p1.touches(p2):
-		r = p1.boundary.intersection(p2.boundary)
+		r = p1.intersection(p2)
 		if isinstance(r, LineString) or isinstance(r, MultiLineString):
-			return r if r.length > 0 else None
-		return None
+			return True if r.length > 0 else False
+		return False
+
+	@staticmethod
+	def haveOverlappingEdge(p1: Polygon, p2: Polygon) -> bool:
+		"""
+		Previous implementation used intersection operator. But it turn out to be VERY buggy (see _haveOverlappingEdge)
+		This one will iterate over all of the boundary edges check if lines are parallel and sees if the distance is minimal.
+		"""
+		shapelyIntersectionCheck = Geometry._haveOverlappingEdge(p1, p2)
+		if p1.distance(p2) > 0: return False # This is an important optimization. The process below is time consuming
+		if shapelyIntersectionCheck: return True
+		lineSegments1 = list(map(LineString, zip(p1.exterior.coords[:-1], p1.exterior.coords[1:])))
+		lineSegments2 = list(map(LineString, zip(p2.exterior.coords[:-1], p2.exterior.coords[1:])))
+		for lineSeg1 in lineSegments1:
+			slope1 = Geometry.lineSegmentSlope(lineSeg1)
+			for lineSeg2 in lineSegments2:
+				slope2 = Geometry.lineSegmentSlope(lineSeg2)
+				if abs(slope1 - slope2) > Geometry.EPSILON: continue
+				d = lineSeg1.distance(lineSeg2)
+				if d < Geometry.EPSILON:
+					return True
+		return False

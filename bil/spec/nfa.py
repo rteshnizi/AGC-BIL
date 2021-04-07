@@ -5,10 +5,11 @@ import json
 from typing import Set
 
 from bil.model.connectivityGraph import ConnectivityGraph
-from bil.utils.graph import GraphAlgorithms
-from bil.utils.geometry import Geometry
+from bil.model.timedGraph import TimedGraph
 from bil.observation.observations import Observation
 from bil.spec.spaceTime import SpaceTimeSet
+from bil.utils.graph import GraphAlgorithms
+from bil.utils.geometry import Geometry
 
 class Transition:
 	def __init__(self, specifier, validators):
@@ -55,6 +56,7 @@ class NFA(nx.DiGraph):
 		self._fig = None
 		self.activeStates: Set[Penny] = set()
 		self._buildGraph()
+		self._previousCGraph: ConnectivityGraph = None
 
 	def __repr__(self):
 		return "%s.NFA" % self._specName
@@ -95,8 +97,11 @@ class NFA(nx.DiGraph):
 		else:
 			# FIXME: Start here, and remove shadows that cannot be connected
 			if len(observation.tracks) == 0:
-				pass
+				# Check connectivity with previous Graph (timed graph) for each penny -> Shadows that are connected will carry forward
+				timedGraph = TimedGraph([self._previousCGraph, cGraph])
+				self.propagatePennies(timedGraph)
 			elif len(observation.tracks) == 1:
+				# Check connectivity with previous Graph (timed graph) for each penny -> Shadows that are connected will to the observation carry forward and turn into the guy
 				pass
 			else: raise RuntimeError("We only work with a single target for now.")
 		activeStatesCopy: Set[Penny] = self.activeStates.copy()
@@ -104,9 +109,9 @@ class NFA(nx.DiGraph):
 			penny = activeStatesCopy.pop()
 			spaceSet = penny.getShapelyPolygon(cGraph)
 			spaceTimeSet = SpaceTimeSet(spaceSet, observation.time)
-			for outboundEdge in self.out_edges(penny.state):
-				currentState = outboundEdge[0]
-				nextState = outboundEdge[1]
+			for outEdge in self.out_edges(penny.state):
+				currentState = outEdge[0]
+				nextState = outEdge[1]
 				transition = self.get_edge_data(currentState, nextState)["transition"]
 				passed = transition.execute(spaceTimeSet)
 				if passed:
@@ -118,7 +123,12 @@ class NFA(nx.DiGraph):
 						self.activeStates.add(Penny(nextState, penny.pose))
 				else:
 					self.activeStates.add(penny)
-		pass
+		self._previousCGraph = cGraph
+
+	def propagatePennies(self, timedGraph: TimedGraph):
+		for penny in self.activeStates:
+			neighbors = timedGraph.getTemporalNeighbors(penny.pose)
+			print(neighbors)
 
 	def displayGraph(self):
 		fig = plt.figure(len(GraphAlgorithms._allFigs))

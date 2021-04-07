@@ -1,11 +1,7 @@
-import os
 import tkinter as tk
-import time
-from tkinter import filedialog
 
 from bil.gui.canvas import Canvas
 from bil.model.timedGraph import TimedGraph
-from bil.model.trajectory import Trajectory
 from bil.model.fieldOfViewRenderer import FieldOfViewRenderer
 from bil.model.connectivityGraph import ConnectivityGraph
 from bil.utils.graph import GraphAlgorithms
@@ -15,7 +11,7 @@ class App(tk.Frame):
 		self.bil = bil
 		# This is the method to call when validate button is clicked
 		self._validateCallback = validateCallback
-		self.timeSteps = len(self.bil.observations) - 1
+		self._maxFovIndex = len(self.bil.observations) - 1
 		self.master = tk.Tk()
 		self.fovRenderer = FieldOfViewRenderer()
 		self.master.title("Canvas")
@@ -83,7 +79,7 @@ class App(tk.Frame):
 
 	@property
 	def _fovLabelText(self):
-		return "0 ≤ FOV %d ≤ %d" % (self._fovIndex, self.timeSteps)
+		return "0 ≤ FOV %d ≤ %d" % (self._fovIndex, self._maxFovIndex)
 
 	def _onClose(self):
 		GraphAlgorithms.killAllDisplayedGraph()
@@ -108,7 +104,7 @@ class App(tk.Frame):
 	def _changeFov(self, showNext: bool):
 		self._clearFOV()
 		self._fovIndex += 1 if showNext else -1
-		self._fovIndex = min(self.timeSteps, self._fovIndex)
+		self._fovIndex = min(self._maxFovIndex, self._fovIndex)
 		self._fovIndex = max(0, self._fovIndex)
 		self.fovLabel.set(self._fovLabelText)
 		self._toggleTrajectory(force=True)
@@ -167,7 +163,15 @@ class App(tk.Frame):
 		self._changeFov(False)
 
 	def chainGraphs(self):
-		chained = TimedGraph(self.bil.fieldOfView.cGraphs, self.spec, self._fovIndex, self._fovIndex + 2)
+		if self._fovIndex == self._maxFovIndex:
+			previousIndex = self._fovIndex - 1
+			nextIndex = self._fovIndex
+		else:
+			previousIndex = self._fovIndex
+			nextIndex = self._fovIndex + 1
+		g1 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(previousIndex).fov, self.spec.validators)
+		g2 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(nextIndex).fov, self.spec.validators)
+		chained = TimedGraph([g1, g2])
 		GraphAlgorithms.displayGraphAuto(chained, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def chainAll(self):

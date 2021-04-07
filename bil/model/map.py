@@ -1,14 +1,14 @@
-from shapely.geometry import Point
-
+from typing import Dict
+from bil.model.featureMap import FeatureMap
 from bil.model.mapRegion import MapRegion
 
 class Map:
 	def __init__(self, coords, regionVertIndices, typesPerRegion, featureMap):
 		self.coords = coords
-		self.regions = {}
+		self.regions: Dict[str, MapRegion] = {}
 		self._buildRegions(regionVertIndices, typesPerRegion, featureMap)
 
-	def _buildRegions(self, regionVertIndices, typesPerRegion, featureMap):
+	def _buildRegions(self, regionVertIndices, typesPerRegion, featureMap: FeatureMap):
 		for i in range(len(regionVertIndices)):
 			region = regionVertIndices[i]
 			if len(region) == 2: continue

@@ -6,5 +6,5 @@ class MapRegion(PolygonalRegion):
 		super().__init__(name, coords, "Grey", "Black" if self.isObstacle else "")
 		self.type = typeStr
 
-	def render(self, canvas, renderText=True):
+	def render(self, canvas, renderText=False):
 		super().render(canvas, renderText)

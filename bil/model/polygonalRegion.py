@@ -1,16 +1,23 @@
 from shapely.geometry import LineString, Point, Polygon
-from typing import List
+from typing import Dict, List, Tuple
 
 from bil.gui.drawing import Drawing
 from bil.utils.geometry import Geometry
 
 class PolygonalRegion:
-	def __init__(self, name, coords, boundaryColor="RED", backgroundColor="", sortCoordinatesClockwise=False):
+	"""
+	coords will be used to create the polygon.
+	If polygon is given, coords arg will be ignored.
+	"""
+	def __init__(self, name: str, coords: List[Tuple[float, float]], boundaryColor="RED", backgroundColor="", polygon: Polygon = None):
 		self.name = name
 		self._renderLineWidth = 1
-		self._coordsList = Geometry.sortCoordinatesClockwise(coords) if sortCoordinatesClockwise else coords
+		try:
+			self._coordsList = coords if polygon is None else list(polygon.exterior.coords)
+		except:
+			print("woopsie")
 		self._coordsDict = self._buildCoords(self._coordsList)
-		self.polygon = Polygon(self._coordsList)
+		self.polygon = Polygon(self._coordsList) if polygon is None else polygon
 		self.BOUNDARY_COLOR = boundaryColor
 		self.BACKGROUND_COLOR = backgroundColor
 		self._edges = self._buildEdges(self._coordsList)
@@ -20,7 +27,7 @@ class PolygonalRegion:
 	def __repr__(self):
 		return self.name
 
-	def _buildCoords(self, coords):
+	def _buildCoords(self, coords: Geometry.CoordsList) -> Dict[str, Point]:
 		d = {}
 		for c in coords:
 			d[Geometry.pointStringId(c[0], c[1])] = Point(c[0], c[1])

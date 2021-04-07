@@ -11,7 +11,6 @@ from bil.model.featureMap import FeatureMap
 from bil.model.agent import Agent
 from bil.model.map import Map
 from bil.model.observationOld import ObservationOld
-from bil.model.sensingRegion import SensingRegion
 from bil.model.teamMember import TeamMember
 from bil.spec.specification import Specification
 
@@ -26,7 +25,7 @@ class EnvironmentParser(Parser):
 		self._saMapPath = os.path.abspath(os.path.join(self._dirAbsPath, "sam.json"))
 		self._ptListFile = os.path.abspath(os.path.join(self._dirAbsPath, "dt.json"))
 
-	def parse(self) -> Tuple[object, object]:
+	def parse(self) -> Tuple[FeatureMap, Map]:
 		"""
 		Returns
 		===
@@ -95,7 +94,7 @@ class ObservationParser(Parser):
 					fov.append(coords, entity["Datap"][i][0], agentIndex=len(agents) - 1)
 		return (observations, agents)
 
-	def parseNew(self):
+	def parseNew(self, envMap: Map, featureMap: FeatureMap):
 		"""
 		Returns
 		===
@@ -124,10 +123,9 @@ class ObservationParser(Parser):
 				xs = rawSensor["FoV"][0][0]
 				ys = rawSensor["FoV"][0][1]
 				coords = [[xs[j], ys[j]] for j in range(len(xs))]
-				region = SensingRegion("SR%d" % idNum, coords, rawObservation["t"], idNum, sortCoordinatesClockwise=True)
-				sensor = Sensor(idNum, rawObservation["t"], rawSensor["pose"][0], rawSensor["pose"][1], rawSensor["pose"][2], region)
+				sensor = Sensor(idNum, rawObservation["t"], rawSensor["pose"][0], rawSensor["pose"][1], rawSensor["pose"][2], coords, envMap, featureMap)
 				sensors[(rawObservation["t"], idNum)] = sensor
-				fov = FOV(sensors)
+			fov = FOV(sensors)
 			if len(rawObservation["deletedTracks"]) > 0:
 				if lastTrack is None: print("Ignoring deleting Track %d. We can't delete a track before one exists." % rawObservation["deletedTracks"][0])
 				else: lastTrack.pose.vanished = True
