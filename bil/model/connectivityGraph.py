@@ -5,6 +5,7 @@ from typing import List, Set, Dict
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.sensingRegion import SensingRegion
 from bil.model.shadowRegion import ShadowRegion
+from bil.model.map import Map
 from bil.observation.fov import FOV
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
@@ -26,7 +27,7 @@ class NodeCluster:
 		return self._polygon
 
 class ConnectivityGraph(nx.DiGraph):
-	def __init__(self, envMap, fov: FOV, validators):
+	def __init__(self, envMap: Map, fov: FOV, validators):
 		super().__init__()
 		self._regionNodes = []
 		self._beamNodes = []
@@ -34,7 +35,7 @@ class ConnectivityGraph(nx.DiGraph):
 		self.fov = fov
 		self.validators = validators
 		self._fovComponentRegions: List[SensingRegion] = []
-		self.map = envMap
+		self.map: Map = envMap
 		self.timestamp = fov.time
 		self._disjointPolys: List[PolygonalRegion] = []
 		print("Building graph for %s" % self.timestamp)

@@ -1,4 +1,6 @@
 from typing import Dict
+from shapely.geometry import Polygon
+from shapely.ops import unary_union
 from bil.model.featureMap import FeatureMap
 from bil.model.mapRegion import MapRegion
 
@@ -6,17 +8,23 @@ class Map:
 	def __init__(self, coords, regionVertIndices, typesPerRegion, featureMap):
 		self.coords = coords
 		self.regions: Dict[str, MapRegion] = {}
-		self._buildRegions(regionVertIndices, typesPerRegion, featureMap)
+		self._populateRegions(regionVertIndices, typesPerRegion, featureMap)
+		self.polygon: Polygon = self._buildPolygon()
 
-	def _buildRegions(self, regionVertIndices, typesPerRegion, featureMap: FeatureMap):
+	def _populateRegions(self, regionVertIndices, typesPerRegion, featureMap: FeatureMap):
 		for i in range(len(regionVertIndices)):
 			region = regionVertIndices[i]
 			if len(region) == 2: continue
-			# FIXME: Data is coming from matlab and the indices there are 1-based
-			coords = [self.coords[ind - 1] for ind in region]
+			# FIXME: If data is coming from matlab then the indices there are 1-based
+			coords = [self.coords[ind] for ind in region]
 			regionType = typesPerRegion[i]
 			name = "r%d" % i
 			self.regions[name] = MapRegion(name, coords, regionType, featureMap.features[regionType])
+
+	def _buildPolygon(self):
+		polygons = [self.regions[r].polygon for r in self.regions]
+		polygon = unary_union(polygons)
+		return polygon
 
 	def render(self, canvas):
 		for region in self.regions.values():

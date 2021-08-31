@@ -1,6 +1,5 @@
 from typing import Dict
 
-from bil.observation.pose import Pose
 from bil.observation.sensor import Sensor
 from bil.utils.geometry import Geometry
 

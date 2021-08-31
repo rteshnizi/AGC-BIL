@@ -1,9 +1,13 @@
 from shapely.geometry import LineString, MultiLineString, Point, Polygon, MultiPolygon
 from shapely.ops import cascaded_union
-from typing import List, Union, Tuple, Dict
+from typing import List, Union, Tuple, Dict, Callable
+from math import pi as PI
 from math import sqrt, cos, sin, atan2, degrees, inf
 from functools import reduce
+from skimage import transform
+from scipy.spatial.transform import Rotation, Slerp
 import operator
+import numpy as np
 
 class Geometry:
 	EPSILON = 0.001
@@ -98,6 +102,10 @@ class Geometry:
 		return (x, y)
 
 	@staticmethod
+	def isPointOnLine(p: Point, l: LineString) -> bool:
+		return l.distance(p) <= Geometry.EPSILON
+
+	@staticmethod
 	def isXyInsidePolygon(ptX: float, ptY: float, polygon: Polygon) -> bool:
 		return Geometry.isPointInsidePolygon(Point(ptX, ptY), polygon)
 
@@ -110,16 +118,20 @@ class Geometry:
 		return "%.5f,%.5f" % (x, y)
 
 	@staticmethod
-	def lineSegStringId(x1: float, y1: float, x2: float, y2: float) -> frozenset:
-		return frozenset([Geometry.pointStringId(x1, y1), Geometry.pointStringId(x2, y2)])
+	def lineSegStringId(line: LineString) -> frozenset:
+		return Geometry.coordListStringId(list(line.coords))
 
 	@staticmethod
-	def lineAndPolygonIntersect(l: LineString, p: Polygon):
+	def coordListStringId(coords: CoordsList) -> frozenset:
+		return frozenset([Geometry.pointStringId(coord[0], coord[1]) for coord in coords])
+
+	@staticmethod
+	def lineAndPolygonIntersect(l: LineString, p: Polygon) -> bool:
 		# TODO: A line seg might touch but not intersect
 		return l.intersects(p)
 
 	@staticmethod
-	def lineAndPolygonIntersectFromXy(xStart, yStart, xEnd, yEnd, p: Polygon):
+	def lineAndPolygonIntersectFromXy(xStart, yStart, xEnd, yEnd, p: Polygon) -> bool:
 		# TODO: A line seg might touch but not intersect
 		l = LineString([(xStart, yStart), (xEnd, yEnd)])
 		return Geometry.lineAndPolygonIntersect(l, p)
@@ -216,3 +228,62 @@ class Geometry:
 				if d < Geometry.EPSILON:
 					return True
 		return False
+
+	@staticmethod
+	def getAllIntersectingEdges(line: LineString, polygon: Union[Polygon, MultiPolygon]) -> List[LineString]:
+		if isinstance(polygon, MultiPolygon):
+			raise "I haven't checked the API to see how to work with this yet."
+		edges = []
+		verts = list(polygon.exterior.coords)
+		polygonBoundary = LineString(verts)
+		points = polygonBoundary.intersection(line)
+		if points.is_empty: return edges
+		points = [points] if isinstance(points, Point) else list(points)
+		for point in points:
+			for v1, v2 in zip(verts, verts[1:]):
+				edge = LineString([v1, v2])
+				if Geometry.isPointOnLine(point, edge):
+					edges.append((v1, v2))
+					break
+		return edges
+
+	@staticmethod
+	def getAffineTransformation(p: CoordsList, pPrime: CoordsList) -> transform.AffineTransform:
+		"""
+		see: https://stackoverflow.com/a/47102206/750567
+		"""
+		p = np.array(p)
+		pPrime = np.array(pPrime)
+		matrix = transform.estimate_transform("affine", p, pPrime)
+		return matrix
+
+	@staticmethod
+	def getParameterizedAffineTransformation(matrix: transform.AffineTransform, param: float) -> transform.AffineTransform:
+		if param > 1 or param < 0:
+			raise "Parameter should be in range [0, 1]"
+		scale = [((matrix.scale[0] - 1) * param) + 1, ((matrix.scale[1] - 1) * param) + 1]
+		rotations = Rotation.from_matrix([
+			[
+				[1, 0, 0],
+				[0, 1, 0],
+				[0, 0, 1]
+			],
+			[
+				[matrix.params[0][0], matrix.params[0][1], 0],
+				[matrix.params[1][0], matrix.params[1][1], 0],
+				[0, 0, 1]
+			]
+		])
+		slerp = Slerp([0, 1], rotations)
+		rotation = slerp([0, param, 1])[1].as_euler('xyz')[2]
+		shear = matrix.shear * param
+		translation = [matrix.translation[0] * param, matrix.translation[1] * param]
+		parameterizedMatrix = transform.AffineTransform(matrix=None, scale=scale, rotation=rotation, shear=shear, translation=translation)
+		return parameterizedMatrix
+
+	@staticmethod
+	def applyMatrixTransformToPolygon(matrix: transform.AffineTransform, polygon: Polygon) -> Polygon:
+		coords = list(polygon.exterior.coords)
+		transformedCoords = transform.matrix_transform(coords, matrix.params)
+		transformedPolygon = Polygon(transformedCoords)
+		return transformedPolygon

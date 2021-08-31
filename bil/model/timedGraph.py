@@ -1,15 +1,13 @@
-import networkx as nx
-import matplotlib.pyplot as plt
-from networkx.classes.function import neighbors
+from shapely import affinity
 from shapely.geometry import LineString, Point, Polygon
 from typing import List, Set, Dict
+import networkx as nx
 import time
 
-from bil.model.polygonalRegion import PolygonalRegion
-from bil.model.shadowRegion import ShadowRegion
 from bil.model.connectivityGraph import ConnectivityGraph
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
+from bil.model.map import Map
 
 class TimedGraph(nx.DiGraph):
 	def __init__(self, graphs: List[ConnectivityGraph], startInd = 0, endInd = None):
@@ -19,9 +17,10 @@ class TimedGraph(nx.DiGraph):
 		self._regionNodes = []
 		self._beamNodes = []
 		self._beamSet = set()
+		self._boundary = None
+		self.reza = []
 		print("Connecting Graphs through time...")
 		self._fig = None
-		self.fovVertexMap: Dict[Point, List[Point]] = {}
 		self.nodeClusters: Dict[str, Set[str]] = {}
 		self.nodeToClusterMap: Dict[str, str] = {}
 		self._build(graphs, startInd, endInd)
@@ -89,16 +88,62 @@ class TimedGraph(nx.DiGraph):
 			return False
 		return True
 
+	def _checkChangesInCollidingEdges(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon, envMap: Map) -> Polygon:
+		"""
+		Takes two connectivity graphs and looks at their respective FOVs
+		to see if the edges of the FOV that collides crosses a different set of edges of the map's boundary.
+		"""
+		fovVerts = list(previousFovPolygon.exterior.coords)
+		previousEdges = set()
+		for v1, v2 in zip(fovVerts, fovVerts[1:]):
+			line = LineString([v1, v2])
+			edges = Geometry.getAllIntersectingEdges(line, envMap.polygon)
+			previousEdges.update(edges)
+		fovVerts = list(currentFovPolygon.exterior.coords)
+		currentEdges = set()
+		for v1, v2 in zip(fovVerts, fovVerts[1:]):
+			line = LineString([v1, v2])
+			edges = Geometry.getAllIntersectingEdges(line, envMap.polygon)
+			currentEdges.update(edges)
+		prevHash = [Geometry.coordListStringId(edge) for edge in previousEdges]
+		currHash = [Geometry.coordListStringId(edge) for edge in currentEdges]
+		thereIsChange = prevHash != currHash
+		return thereIsChange
+
+	def _getAffineTransformation(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon):
+		matrix = Geometry.getAffineTransformation(previousFovPolygon.exterior.coords, currentFovPolygon.exterior.coords)
+		return matrix
+
+	def _applyAffineTransformation(self, matrix , previousFovPolygon: Polygon):
+		transformedPolygon = Geometry.applyMatrixTransformToPolygon(matrix, previousFovPolygon)
+		return transformedPolygon
+
+	def _findIntermediateComponentEvents(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon, envMap: Map, depth=0):
+		if depth > 5: return
+		# Look for changes in colliding edges
+		thereIsChange = self._checkChangesInCollidingEdges(previousFovPolygon, currentFovPolygon, envMap)
+		# If there are no changes, we don't need to include the layer in our timesteps
+		if not thereIsChange: return
+		# Find affine transformation, we use the matrix to find all the intermediate component events in this period
+		matrix = self._getAffineTransformation(previousFovPolygon, currentFovPolygon)
+		newMatrix = Geometry.getParameterizedAffineTransformation(matrix, 0.5)
+		intermediatePolygon = self._applyAffineTransformation(newMatrix, previousFovPolygon)
+		self.reza.append(intermediatePolygon)
+		self._findIntermediateComponentEvents(previousFovPolygon, intermediatePolygon, envMap, depth + 1)
+		self._findIntermediateComponentEvents(intermediatePolygon, currentFovPolygon, envMap, depth + 1)
+
 	def _build(self, graphs: List[ConnectivityGraph], startInd = 0, endInd = None):
 		if endInd is None: endInd = len(graphs)
 
 		self.nodesByLayer = []
-		print("n = %d" % len(self.nodes))
-		print("O(%d)" % (len(self.nodes) * len(self.nodes)))
 		previousLayer = None
 		startTime = time.time()
 		for i in range(startInd, endInd):
 			currentLayer = graphs[i]
+			if previousLayer is not None:
+				self._findIntermediateComponentEvents(previousLayer.fov.polygon, currentLayer.fov.polygon, previousLayer.map)
+				return
+
 			layerIndex = len(self.nodesByLayer)
 			self.nodesByLayer.append([])
 			self._timeStamps.append(currentLayer.timestamp)
@@ -117,8 +162,6 @@ class TimedGraph(nx.DiGraph):
 			if layerIndex == 0:
 				previousLayer = currentLayer
 				continue
-			# BUILD FOV COORD MAPPING
-			fovCoordsMap = self._buildFovCoordsMap(currentLayer, previousLayer)
 			# CREATE TEMPORAL EDGES
 			for n1 in self.nodesByLayer[layerIndex - 1]:
 				if GraphAlgorithms.isBeamNode(n1): continue

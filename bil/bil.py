@@ -9,7 +9,8 @@ class Bil(object):
 		Prototypes.initialize()
 		self.loadFromFile = loadFromFile
 		# self.dataPrototype = "TemporalEdgeTest-1"
-		self.dataPrototype = "TemporalEdgeTest-2"
+		# self.dataPrototype = "TemporalEdgeTest-2"
+		self.dataPrototype = "TwistTest"
 		# self.dataPrototype = "Prototype-1"
 		# self.dataPrototype = "Prototype-2"
 		# self.dataPrototype = "MovingSensor-0"

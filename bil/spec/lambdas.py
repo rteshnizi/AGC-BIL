@@ -32,6 +32,7 @@ class Prototypes:
 	"""
 	P2 = None
 	TET1 = None
+	TWIST = None
 	@staticmethod
 	def initialize():
 		Prototypes.P2 = ObjectLiteral(
@@ -46,6 +47,11 @@ class Prototypes:
 		Prototypes.TET1 = ObjectLiteral(
 			A = Lambda(Prototypes.funcP2A, [[10, 40], [20, 40], [20, 30], [10, 30]], LambdaType.Region),
 			B = Lambda(Prototypes.funcP2B, [[90, 40], [80, 40], [80, 30], [90, 30]], LambdaType.Region),
+			T0 = Lambda(Prototypes.funcP2T0, 10, LambdaType.Time)
+		)
+		Prototypes.TWIST = ObjectLiteral(
+			A = Lambda(Prototypes.funcP2A, [[10, 75], [20, 75], [20, 65], [10, 65]], LambdaType.Region),
+			B = Lambda(Prototypes.funcP2B, [[145, 25], [135, 25], [135, 15], [145, 15]], LambdaType.Region),
 			T0 = Lambda(Prototypes.funcP2T0, 10, LambdaType.Time)
 		)
 

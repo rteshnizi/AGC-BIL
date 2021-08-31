@@ -1,9 +1,11 @@
 {
     "cSpell.words": [
         "Reza",
+        "Slerp",
         "Tianqi",
         "Vect",
         "Vects",
+        "Verts",
         "fovs"
     ],
     "python.autoComplete.extraPaths": [

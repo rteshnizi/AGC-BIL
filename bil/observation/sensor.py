@@ -17,7 +17,8 @@ class Sensor:
 		return "Sensor%d" % self.id
 
 	def _buildVisibilityPolygon(self, envMap: Map, featureMap: FeatureMap) -> Geometry.CoordsList:
-		sortedCoords = Geometry.sortCoordinatesClockwise(self._originalCoords)
+		# sortedCoords = Geometry.sortCoordinatesClockwise(self._originalCoords)
+		sortedCoords = self._originalCoords
 		polygon = Polygon(sortedCoords)
 		for rKey in envMap.regions:
 			region = envMap.regions[rKey]

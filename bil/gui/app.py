@@ -5,6 +5,7 @@ from bil.model.timedGraph import TimedGraph
 from bil.model.fieldOfViewRenderer import FieldOfViewRenderer
 from bil.model.connectivityGraph import ConnectivityGraph
 from bil.utils.graph import GraphAlgorithms
+from bil.gui.drawing import Drawing
 
 class App(tk.Frame):
 	def __init__(self, bil, validateCallback):
@@ -48,7 +49,6 @@ class App(tk.Frame):
 		self._renderMap()
 		self._renderTrajectories()
 		self._renderSpec()
-		self.lastDisplayedGraph = None
 
 	def _renderMap(self):
 		self.bil.map.render(self.canvas.tkCanvas)
@@ -151,10 +151,8 @@ class App(tk.Frame):
 		self.spec.nfa.displayGraph()
 
 	def showGraph(self):
-		if self.lastDisplayedGraph is not None:
-			self.lastDisplayedGraph.killDisplayedGraph()
-		self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.observationToRender.fov, self.spec.validators)
-		self.lastDisplayedGraph.displayGraph(displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
+		graph = ConnectivityGraph(self.bil.map, self.observationToRender.fov, self.spec.validators)
+		graph.displayGraph(displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def nextFOV(self):
 		self._changeFov(True)
@@ -172,7 +170,9 @@ class App(tk.Frame):
 		g1 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(previousIndex).fov, self.spec.validators)
 		g2 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(nextIndex).fov, self.spec.validators)
 		chained = TimedGraph([g1, g2])
-		GraphAlgorithms.displayGraphAuto(chained, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
+		[Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "RED", "", 2, "REZA") for poly in chained.reza]
+		# print(list(chained.reza.coords))
+		# GraphAlgorithms.displayGraphAuto(chained, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def chainAll(self):
 		GraphAlgorithms.displayGraphAuto(self.bil.fieldOfView.chainedGraphThroughTime(self.spec), displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
@@ -237,9 +237,8 @@ class App(tk.Frame):
 			column += 1
 
 	def condenseGraph(self):
-		if self.lastDisplayedGraph is None:
-			self.lastDisplayedGraph = ConnectivityGraph(self.bil.map, self.observationToRender.fov, self.spec.validators)
-		condensed = self.lastDisplayedGraph.condense()
+		graph = ConnectivityGraph(self.bil.map, self.observationToRender.fov, self.spec.validators)
+		condensed = graph.condense()
 		GraphAlgorithms.displayGraphAuto(condensed, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def validate(self):

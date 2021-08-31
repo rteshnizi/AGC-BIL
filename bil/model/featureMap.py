@@ -1,6 +1,9 @@
 from typing import Dict
 
 class FeatureMap:
+	"""
+	Data structure to represent features as described by Semantic Map.
+	"""
 	def __init__(self, json: dict):
 		self.features: Dict[str, Feature] = {}
 		for f in json:

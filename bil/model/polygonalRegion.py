@@ -38,14 +38,16 @@ class PolygonalRegion:
 		for i in range(len(coords) - 1):
 			c1 = coords[i]
 			c2 = coords[i + 1]
-			d[Geometry.lineSegStringId(c1[0], c1[1], c2[0], c2[1])] = LineString([(c1[0], c1[1]), (c2[0], c2[1])])
+			edgeCoords = [(c1[0], c1[1]), (c2[0], c2[1])]
+			d[Geometry.coordListStringId(edgeCoords)] = LineString(edgeCoords)
 		c1 = coords[len(coords) - 1]
 		c2 = coords[0]
-		d[Geometry.lineSegStringId(c1[0], c1[1], c2[0], c2[1])] = LineString([(c1[0], c1[1]), (c2[0], c2[1])])
+		edgeCoords = [(c1[0], c1[1]), (c2[0], c2[1])]
+		d[Geometry.coordListStringId(edgeCoords)] = LineString(edgeCoords)
 		return d
 
 	def _hasEdgeByXy(self, x1, y1, x2, y2):
-		return Geometry.lineSegStringId(x1, y1, x2, y2) in self._edges
+		return Geometry.coordListStringId(x1, y1, x2, y2) in self._edges
 
 	def _hasEdgeByName(self, name):
 		return name in self._edges
