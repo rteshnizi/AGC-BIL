@@ -1,8 +1,9 @@
-from shapely import affinity
-from shapely.geometry import LineString, Point, Polygon
-from typing import List, Set, Dict
+from math import inf
 import networkx as nx
+from shapely.geometry import LineString, Point, Polygon
+from skimage import transform
 import time
+from typing import List, Set, Dict
 
 from bil.model.connectivityGraph import ConnectivityGraph
 from bil.utils.geometry import Geometry
@@ -108,7 +109,7 @@ class TimedGraph(nx.DiGraph):
 		prevHash = [Geometry.coordListStringId(edge) for edge in previousEdges]
 		currHash = [Geometry.coordListStringId(edge) for edge in currentEdges]
 		thereIsChange = prevHash != currHash
-		return thereIsChange
+		return (thereIsChange, previousEdges, currentEdges)
 
 	def _getAffineTransformation(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon):
 		matrix = Geometry.getAffineTransformation(previousFovPolygon.exterior.coords, currentFovPolygon.exterior.coords)
@@ -118,16 +119,37 @@ class TimedGraph(nx.DiGraph):
 		transformedPolygon = Geometry.applyMatrixTransformToPolygon(matrix, previousFovPolygon)
 		return transformedPolygon
 
+	def _findTheLastTimeTheyAreColliding(self, movingPolygon: Polygon, staticEdge: Geometry.CoordsList, transfromation: transform.AffineTransform):
+		fovVerts = list(movingPolygon.exterior.coords)
+		minLatestTime = inf
+		staticEdgeL = LineString(staticEdge)
+		for v1, v2 in zip(fovVerts, fovVerts[1:]):
+			latestTime = -1 * inf
+			movingEdge = LineString([v1, v2])
+			for x in range(1, 20, 1):
+				fraction = x / 20
+				newTransform = Geometry.getParameterizedAffineTransformation(transfromation, fraction)
+				intermediateLine = Geometry.applyMatrixTransformToLineString(newTransform, movingEdge)
+				if Geometry.intersectLineSegments(intermediateLine, staticEdgeL) is not None:
+					latestTime = fraction
+				else:
+					break
+			if latestTime < minLatestTime:
+				minLatestTime = latestTime
+			return minLatestTime
+
 	def _findIntermediateComponentEvents(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon, envMap: Map, depth=0):
-		if depth > 5: return
+		if depth > 10: return
 		# Look for changes in colliding edges
-		thereIsChange = self._checkChangesInCollidingEdges(previousFovPolygon, currentFovPolygon, envMap)
+		(thereIsChange, previousEdges, currentEdges) = self._checkChangesInCollidingEdges(previousFovPolygon, currentFovPolygon, envMap)
 		# If there are no changes, we don't need to include the layer in our timesteps
 		if not thereIsChange: return
 		# Find affine transformation, we use the matrix to find all the intermediate component events in this period
-		matrix = self._getAffineTransformation(previousFovPolygon, currentFovPolygon)
-		newMatrix = Geometry.getParameterizedAffineTransformation(matrix, 0.5)
-		intermediatePolygon = self._applyAffineTransformation(newMatrix, previousFovPolygon)
+		transform = self._getAffineTransformation(previousFovPolygon, currentFovPolygon)
+		for edge in previousEdges:
+			time = self._findTheLastTimeTheyAreColliding(previousFovPolygon, edge, transform)
+		newTransform = Geometry.getParameterizedAffineTransformation(transform, 0.5)
+		intermediatePolygon = self._applyAffineTransformation(newTransform, previousFovPolygon)
 		self.reza.append(intermediatePolygon)
 		self._findIntermediateComponentEvents(previousFovPolygon, intermediatePolygon, envMap, depth + 1)
 		self._findIntermediateComponentEvents(intermediatePolygon, currentFovPolygon, envMap, depth + 1)

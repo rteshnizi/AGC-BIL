@@ -166,7 +166,7 @@ class Geometry:
 		if not (Geometry.isLineSegment(l1) and Geometry.isLineSegment(l2)):
 			raise RuntimeError("This method is only tested for line segments")
 		r = l1.intersection(l2)
-		if isinstance(r, LineString) and r.length == 0:
+		if isinstance(r, LineString) and r.is_empty:
 			return None
 		return r
 
@@ -287,3 +287,10 @@ class Geometry:
 		transformedCoords = transform.matrix_transform(coords, matrix.params)
 		transformedPolygon = Polygon(transformedCoords)
 		return transformedPolygon
+
+	@staticmethod
+	def applyMatrixTransformToLineString(matrix: transform.AffineTransform, line: LineString) -> Polygon:
+		coords = list(line.coords)
+		transformedCoords = transform.matrix_transform(coords, matrix.params)
+		transformedLineString = LineString(transformedCoords)
+		return transformedLineString
