@@ -158,14 +158,19 @@ class TimedGraph(nx.DiGraph):
 			i = 0
 			while i < len(haveOverlap):
 				(movingEdge, staticEdge, intervalStart, intervalEnd) = haveOverlap.pop(i)
-				collsionCheckResults = self._checkIntervalForCollision(movingEdge, staticEdge, transformation, intervalStart, intervalEnd)
-				if collsionCheckResults[0] == collsionCheckResults[1]: continue
-				midInterval = (intervalStart + intervalEnd) / 2
-				haveOverlap.insert(i, (movingEdge, staticEdge, intervalStart, midInterval))
-				i += 1
-				haveOverlap.insert(i, (movingEdge, staticEdge, midInterval, intervalEnd))
-				i += 1
+				intervalMid = (intervalStart + intervalEnd) / 2
+				collsionCheckResults = self._checkIntervalForCollision(movingEdge, staticEdge, transformation, intervalStart, intervalMid)
+				if collsionCheckResults[0] != collsionCheckResults[1]:
+					haveOverlap.insert(i, (movingEdge, staticEdge, intervalStart, intervalMid))
+					i += 1
+				collsionCheckResults = self._checkIntervalForCollision(movingEdge, staticEdge, transformation, intervalMid, intervalEnd)
+				if collsionCheckResults[0] != collsionCheckResults[1]:
+					haveOverlap.insert(i, (movingEdge, staticEdge, intervalMid, intervalEnd))
+					i += 1
 			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
+			for interval in dontHaveOverlap:
+				intermediateTransform = Geometry.getParameterizedAffineTransformation(transformation, interval[3])
+				self.red.append(Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon))
 		return []
 		for currentSensorEdgeId in currentCollidingEdges:
 			staticEdges = currentCollidingEdges[currentSensorEdgeId]
