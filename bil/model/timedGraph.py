@@ -1,25 +1,29 @@
-from math import inf
+from bil.model.sensingRegion import SensingRegion
 import networkx as nx
 from shapely.geometry import LineString, Point, Polygon
 from skimage import transform
 import time
-from typing import List, Set, Dict
+from typing import List, Set, Dict, Tuple
+from math import inf
 
 from bil.model.connectivityGraph import ConnectivityGraph
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
 from bil.model.map import Map
+from bil.utils.priorityQ import PriorityQ
 
 class TimedGraph(nx.DiGraph):
 	def __init__(self, graphs: List[ConnectivityGraph], startInd = 0, endInd = None):
 		super().__init__()
+		self.MIN_TIME_DELTA = 0.01
 		self._nodeLayers = []
 		self._timeStamps = []
 		self._regionNodes = []
 		self._beamNodes = []
 		self._beamSet = set()
 		self._boundary = None
-		self.reza = []
+		self.red = []
+		self.blue = []
 		print("Connecting Graphs through time...")
 		self._fig = None
 		self.nodeClusters: Dict[str, Set[str]] = {}
@@ -35,64 +39,16 @@ class TimedGraph(nx.DiGraph):
 		(lower, upper) = self._getLowerAndUpperNode(n1, n2)
 		self.add_edge(lower, upper, isTemporal=True)
 
-	def _buildFovCoordsMap(self, currentLayer: ConnectivityGraph, previousLayer: ConnectivityGraph) -> Geometry.CoordsMap:
+	def _checkChangesInCollidingEdges(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon, envMap: Map) -> Tuple[bool, Set[Geometry.CoordsList], Set[Geometry.CoordsList]]:
 		"""
-		Map from point in bottom layer to top layer
-		"""
-		fovCoordsMap: List[Geometry.CoordsMap] = []
-		for sensorKey in currentLayer.fov.sensors:
-			currentLayerDict = {}
-			fovCoordsMap.append(currentLayerDict)
-			currentSensor = currentLayer.fov.sensors[sensorKey]
-			previousKey = (previousLayer.fov.time, sensorKey[1])
-			previousSensor = previousLayer.fov.sensors[previousKey]
-			for i in range(len(previousSensor._originalCoords)):
-				currentLayerDict[currentSensor._originalCoords[i]] = previousSensor._originalCoords[i]
-		return fovCoordsMap
+			Takes two connectivity graphs and looks at their respective FOVs
+			to see if the edges of the FOV that collides crosses a different set of edges of the map's boundary.
 
-	def _testConnectivity(self, x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float, px: float, py: float):
-		"""
-		In oneNote look at 03/02/2021
-		syms l x1 x2 x3 x4 y1 y2 y3 y4 a b xx yy xxx yyy
-		eqns = [
-		l*x3+(1-l)*x1==xx,
-		l*y3+(1-l)*y1 == yy,
-		l*x4+(1-l)*x2 == xxx,
-		l*y4+(1-l)*y2 == yyy,
-		a*xx+b==yy,
-		a*xxx+b==yyy,
-		a*px+b==py
-		]
-		solve(eqns, [l,xx,yy,xxx,yyy,a,b])
-
-		ans.l =
-		(px^2*y1 - px^2*y2 - px^2*y3 + px^2*y4 + px*(px^2*y1^2 - 2*px^2*y1*y2 - 2*px^2*y1*y3 + 2*px^2*y1*y4 + px^2*y2^2 + 2*px^2*y2*y3 - 2*px^2*y2*y4 + px^2*y3^2 - 2*px^2*y3*y4 + px^2*y4^2 - 2*px*py*x1*y1 + 2*px*py*x1*y2 + 2*px*py*x1*y3 - 2*px*py*x1*y4 + 2*px*py*x2*y1 - 2*px*py*x2*y2 - 2*px*py*x2*y3 + 2*px*py*x2*y4 + 2*px*py*x3*y1 - 2*px*py*x3*y2 - 2*px*py*x3*y3 + 2*px*py*x3*y4 - 2*px*py*x4*y1 + 2*px*py*x4*y2 + 2*px*py*x4*y3 - 2*px*py*x4*y4 + 2*px*x1*y1*y4 - 4*px*x1*y2*y3 + 2*px*x1*y2*y4 + 2*px*x1*y3*y4 - 2*px*x1*y4^2 + 2*px*x2*y1*y3 - 4*px*x2*y1*y4 + 2*px*x2*y2*y3 - 2*px*x2*y3^2 + 2*px*x2*y3*y4 + 2*px*x3*y1*y2 - 4*px*x3*y1*y4 - 2*px*x3*y2^2 + 2*px*x3*y2*y3 + 2*px*x3*y2*y4 - 2*px*x4*y1^2 + 2*px*x4*y1*y2 + 2*px*x4*y1*y3 + 2*px*x4*y1*y4 - 4*px*x4*y2*y3 + py^2*x1^2 - 2*py^2*x1*x2 - 2*py^2*x1*x3 + 2*py^2*x1*x4 + py^2*x2^2 + 2*py^2*x2*x3 - 2*py^2*x2*x4 + py^2*x3^2 - 2*py^2*x3*x4 + py^2*x4^2 - 2*py*x1^2*y4 + 2*py*x1*x2*y3 + 2*py*x1*x2*y4 + 2*py*x1*x3*y2 + 2*py*x1*x3*y4 + 2*py*x1*x4*y1 - 4*py*x1*x4*y2 - 4*py*x1*x4*y3 + 2*py*x1*x4*y4 - 2*py*x2^2*y3 - 4*py*x2*x3*y1 + 2*py*x2*x3*y2 + 2*py*x2*x3*y3 - 4*py*x2*x3*y4 + 2*py*x2*x4*y1 + 2*py*x2*x4*y3 - 2*py*x3^2*y2 + 2*py*x3*x4*y1 + 2*py*x3*x4*y2 - 2*py*x4^2*y1 + x1^2*y4^2 - 2*x1*x2*y3*y4 - 2*x1*x3*y2*y4 - 2*x1*x4*y1*y4 + 4*x1*x4*y2*y3 + x2^2*y3^2 + 4*x2*x3*y1*y4 - 2*x2*x3*y2*y3 - 2*x2*x4*y1*y3 + x3^2*y2^2 - 2*x3*x4*y1*y2 + x4^2*y1^2)^(1/2) - px*py*x1 + px*py*x2 + px*py*x3 - px*py*x4 + 2*py*x1*x4 - 2*py*x2*x3 - px*x1*y4 + px*x2*y3 + px*x3*y2 - px*x4*y1)/(2*(px*x1*y2 - px*x2*y1 - px*x1*y4 + px*x2*y3 - px*x3*y2 + px*x4*y1 + px*x3*y4 - px*x4*y3)) - (py*x1*x4 - py*x2*x3 - px*x1*y2 + px*x2*y1 + px*x3*y2 - px*x4*y1)/(px*x1*y2 - px*x2*y1 - px*x1*y4 + px*x2*y3 - px*x3*y2 + px*x4*y1 + px*x3*y4 - px*x4*y3)
-		- (py*x1*x4 - py*x2*x3 - px*x1*y2 + px*x2*y1 + px*x3*y2 - px*x4*y1)/(px*x1*y2 - px*x2*y1 - px*x1*y4 + px*x2*y3 - px*x3*y2 + px*x4*y1 + px*x3*y4 - px*x4*y3) - (px^2*y2 - px^2*y1 + px^2*y3 - px^2*y4 + px*(px^2*y1^2 - 2*px^2*y1*y2 - 2*px^2*y1*y3 + 2*px^2*y1*y4 + px^2*y2^2 + 2*px^2*y2*y3 - 2*px^2*y2*y4 + px^2*y3^2 - 2*px^2*y3*y4 + px^2*y4^2 - 2*px*py*x1*y1 + 2*px*py*x1*y2 + 2*px*py*x1*y3 - 2*px*py*x1*y4 + 2*px*py*x2*y1 - 2*px*py*x2*y2 - 2*px*py*x2*y3 + 2*px*py*x2*y4 + 2*px*py*x3*y1 - 2*px*py*x3*y2 - 2*px*py*x3*y3 + 2*px*py*x3*y4 - 2*px*py*x4*y1 + 2*px*py*x4*y2 + 2*px*py*x4*y3 - 2*px*py*x4*y4 + 2*px*x1*y1*y4 - 4*px*x1*y2*y3 + 2*px*x1*y2*y4 + 2*px*x1*y3*y4 - 2*px*x1*y4^2 + 2*px*x2*y1*y3 - 4*px*x2*y1*y4 + 2*px*x2*y2*y3 - 2*px*x2*y3^2 + 2*px*x2*y3*y4 + 2*px*x3*y1*y2 - 4*px*x3*y1*y4 - 2*px*x3*y2^2 + 2*px*x3*y2*y3 + 2*px*x3*y2*y4 - 2*px*x4*y1^2 + 2*px*x4*y1*y2 + 2*px*x4*y1*y3 + 2*px*x4*y1*y4 - 4*px*x4*y2*y3 + py^2*x1^2 - 2*py^2*x1*x2 - 2*py^2*x1*x3 + 2*py^2*x1*x4 + py^2*x2^2 + 2*py^2*x2*x3 - 2*py^2*x2*x4 + py^2*x3^2 - 2*py^2*x3*x4 + py^2*x4^2 - 2*py*x1^2*y4 + 2*py*x1*x2*y3 + 2*py*x1*x2*y4 + 2*py*x1*x3*y2 + 2*py*x1*x3*y4 + 2*py*x1*x4*y1 - 4*py*x1*x4*y2 - 4*py*x1*x4*y3 + 2*py*x1*x4*y4 - 2*py*x2^2*y3 - 4*py*x2*x3*y1 + 2*py*x2*x3*y2 + 2*py*x2*x3*y3 - 4*py*x2*x3*y4 + 2*py*x2*x4*y1 + 2*py*x2*x4*y3 - 2*py*x3^2*y2 + 2*py*x3*x4*y1 + 2*py*x3*x4*y2 - 2*py*x4^2*y1 + x1^2*y4^2 - 2*x1*x2*y3*y4 - 2*x1*x3*y2*y4 - 2*x1*x4*y1*y4 + 4*x1*x4*y2*y3 + x2^2*y3^2 + 4*x2*x3*y1*y4 - 2*x2*x3*y2*y3 - 2*x2*x4*y1*y3 + x3^2*y2^2 - 2*x3*x4*y1*y2 + x4^2*y1^2)^(1/2) + px*py*x1 - px*py*x2 - px*py*x3 + px*py*x4 - 2*py*x1*x4 + 2*py*x2*x3 + px*x1*y4 - px*x2*y3 - px*x3*y2 + px*x4*y1)/(2*(px*x1*y2 - px*x2*y1 - px*x1*y4 + px*x2*y3 - px*x3*y2 + px*x4*y1 + px*x3*y4 - px*x4*y3))
-		"""
-		bigParenthesis = px**2*y1**2 - 2*px**2*y1*y2 - 2*px**2*y1*y3 + 2*px**2*y1*y4 + px**2*y2**2 + 2*px**2*y2*y3 - 2*px**2*y2*y4 + px**2*y3**2 - 2*px**2*y3*y4 + px**2*y4**2 - 2*px*py*x1*y1 + 2*px*py*x1*y2 + 2*px*py*x1*y3 - 2*px*py*x1*y4 + 2*px*py*x2*y1 - 2*px*py*x2*y2 - 2*px*py*x2*y3 + 2*px*py*x2*y4 + 2*px*py*x3*y1 - 2*px*py*x3*y2 - 2*px*py*x3*y3 + 2*px*py*x3*y4 - 2*px*py*x4*y1 + 2*px*py*x4*y2 + 2*px*py*x4*y3 - 2*px*py*x4*y4 + 2*px*x1*y1*y4 - 4*px*x1*y2*y3 + 2*px*x1*y2*y4 + 2*px*x1*y3*y4 - 2*px*x1*y4**2 + 2*px*x2*y1*y3 - 4*px*x2*y1*y4 + 2*px*x2*y2*y3 - 2*px*x2*y3**2 + 2*px*x2*y3*y4 + 2*px*x3*y1*y2 - 4*px*x3*y1*y4 - 2*px*x3*y2**2 + 2*px*x3*y2*y3 + 2*px*x3*y2*y4 - 2*px*x4*y1**2 + 2*px*x4*y1*y2 + 2*px*x4*y1*y3 + 2*px*x4*y1*y4 - 4*px*x4*y2*y3 + py**2*x1**2 - 2*py**2*x1*x2 - 2*py**2*x1*x3 + 2*py**2*x1*x4 + py**2*x2**2 + 2*py**2*x2*x3 - 2*py**2*x2*x4 + py**2*x3**2 - 2*py**2*x3*x4 + py**2*x4**2 - 2*py*x1**2*y4 + 2*py*x1*x2*y3 + 2*py*x1*x2*y4 + 2*py*x1*x3*y2 + 2*py*x1*x3*y4 + 2*py*x1*x4*y1 - 4*py*x1*x4*y2 - 4*py*x1*x4*y3 + 2*py*x1*x4*y4 - 2*py*x2**2*y3 - 4*py*x2*x3*y1 + 2*py*x2*x3*y2 + 2*py*x2*x3*y3 - 4*py*x2*x3*y4 + 2*py*x2*x4*y1 + 2*py*x2*x4*y3 - 2*py*x3**2*y2 + 2*py*x3*x4*y1 + 2*py*x3*x4*y2 - 2*py*x4**2*y1 + x1**2*y4**2 - 2*x1*x2*y3*y4 - 2*x1*x3*y2*y4 - 2*x1*x4*y1*y4 + 4*x1*x4*y2*y3 + x2**2*y3**2 + 4*x2*x3*y1*y4 - 2*x2*x3*y2*y3 - 2*x2*x4*y1*y3 + x3**2*y2**2 - 2*x3*x4*y1*y2 + x4**2*y1**2
-		smallParenthesis1 = py*x1*x4 - py*x2*x3 - px*x1*y2 + px*x2*y1 + px*x3*y2 - px*x4*y1
-		smallParenthesis2 = px*x1*y2 - px*x2*y1 - px*x1*y4 + px*x2*y3 - px*x3*y2 + px*x4*y1 + px*x3*y4 - px*x4*y3
-		l1 = (px**2*y1 - px**2*y2 - px**2*y3 + px**2*y4 + px*(bigParenthesis)**(1/2) - px*py*x1 + px*py*x2 + px*py*x3 - px*py*x4 + 2*py*x1*x4 - 2*py*x2*x3 - px*x1*y4 + px*x2*y3 + px*x3*y2 - px*x4*y1)/(2*(smallParenthesis2)) - (smallParenthesis1)/(smallParenthesis2)
-		l2 = -1 * (smallParenthesis1)/(smallParenthesis2) - (px**2*y2 - px**2*y1 + px**2*y3 - px**2*y4 + px*(bigParenthesis)**(1/2) + px*py*x1 - px*py*x2 - px*py*x3 + px*py*x4 - 2*py*x1*x4 + 2*py*x2*x3 + px*x1*y4 - px*x2*y3 - px*x3*y2 + px*x4*y1)/(2*(smallParenthesis2))
-		l = l1 if l2 < 0 else l2
-		if l >= 1:
-			return False
-		xx = l*x3 + (1 - l)*x1
-		yy = l*y3 + (1 - l)*y1
-		xxx = l*x4 + (1 - l)*x2
-		yyy = l*y4 + (1 - l)*y2
-		(xMin, xMax) = (xx, xxx) if xx < xxx else (xxx, xx)
-		(yMin, yMax) = (yy, yyy) if yy < yyy else (yyy, yy)
-		if px > xMax or px < xMin:
-			return False
-		if py > yMax or py < yMin:
-			return False
-		return True
-
-	def _checkChangesInCollidingEdges(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon, envMap: Map) -> Polygon:
-		"""
-		Takes two connectivity graphs and looks at their respective FOVs
-		to see if the edges of the FOV that collides crosses a different set of edges of the map's boundary.
+			#### Return
+			A tuple with three elements:
+				(Whether the edges are the same or neighboring,
+				The edges hitting the previous FOV configuration,
+				The edges hitting the current FOV configuration)
 		"""
 		fovVerts = list(previousFovPolygon.exterior.coords)
 		previousEdges = set()
@@ -108,51 +64,123 @@ class TimedGraph(nx.DiGraph):
 			currentEdges.update(edges)
 		prevHash = [Geometry.coordListStringId(edge) for edge in previousEdges]
 		currHash = [Geometry.coordListStringId(edge) for edge in currentEdges]
-		thereIsChange = prevHash != currHash
-		return (thereIsChange, previousEdges, currentEdges)
+		edgesAreTheSame = prevHash == currHash
+		if edgesAreTheSame: return (True, previousEdges, currentEdges)
+		# # Are they almost the same (neighboring)
+		# for edge1coords in previousEdges:
+		# 	pts1Set = set(edge1coords)
+		# 	for edge2coords in currentEdges:
+		# 		pts2Set = set(edge2coords)
+		# 		coordsInCommon = pts1Set.intersection(pts2Set)
+		# 		# Common edge doesn't count
+		# 		if len(coordsInCommon) == 0:
+		# 			continue
+		# 		if len(coordsInCommon) == 2:
+		# 			break
+		# 		if len(coordsInCommon) == 1:
+		# 			# There is a neghboring edge
+		# 			return (True, previousEdges, currentEdges)
+		# 		raise("Past Reza said, check when does this happen")
+		return (False, previousEdges, currentEdges)
 
 	def _getAffineTransformation(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon):
 		matrix = Geometry.getAffineTransformation(previousFovPolygon.exterior.coords, currentFovPolygon.exterior.coords)
 		return matrix
 
-	def _applyAffineTransformation(self, matrix , previousFovPolygon: Polygon):
-		transformedPolygon = Geometry.applyMatrixTransformToPolygon(matrix, previousFovPolygon)
-		return transformedPolygon
+	def _getCollidingEdgesByEdge(self, sensor: SensingRegion, envMap: Map) -> Dict[str, Set[LineString]]:
+		collisionData = {}
+		for sensorEdgeId in sensor.edges:
+			collisionData[sensorEdgeId] = Geometry.getAllIntersectingEdges(sensor.edges[sensorEdgeId], envMap.polygon)
+		return collisionData
 
-	def _findTheLastTimeTheyAreColliding(self, movingPolygon: Polygon, staticEdge: Geometry.CoordsList, transfromation: transform.AffineTransform):
-		fovVerts = list(movingPolygon.exterior.coords)
-		minLatestTime = inf
-		staticEdgeL = LineString(staticEdge)
-		for v1, v2 in zip(fovVerts, fovVerts[1:]):
-			latestTime = -1 * inf
-			movingEdge = LineString([v1, v2])
-			for x in range(1, 20, 1):
-				fraction = x / 20
-				newTransform = Geometry.getParameterizedAffineTransformation(transfromation, fraction)
-				intermediateLine = Geometry.applyMatrixTransformToLineString(newTransform, movingEdge)
-				if Geometry.intersectLineSegments(intermediateLine, staticEdgeL) is not None:
-					latestTime = fraction
-				else:
+	def _checkIntervalForCollision(self, movingEdge: LineString, staticEdge: LineString, transformation: transform.AffineTransform, intervalStart: float, intervalEnd: float) -> Tuple[bool, bool]:
+		startConfigTransformation = Geometry.getParameterizedAffineTransformation(transformation, intervalStart)
+		endConfigTransformation = Geometry.getParameterizedAffineTransformation(transformation, intervalEnd)
+		movingEdgeStartConfiguration = Geometry.applyMatrixTransformToLineString(startConfigTransformation, movingEdge)
+		movingEdgeEndConfiguration = Geometry.applyMatrixTransformToLineString(endConfigTransformation, movingEdge)
+		return (movingEdgeStartConfiguration.intersects(staticEdge), movingEdgeEndConfiguration.intersects(staticEdge))
+
+	def _checkIntervalsForOverlap(self, interval1: Tuple[float, float], interval2: Tuple[float, float]) -> bool:
+		# If end of one interval happens earlier than the other
+		if interval1[1] <= interval2[0]: return False
+		if interval2[1] <= interval1[0]: return False
+		return True
+
+	def _splitIntervalsListForOverlap(self, intervals: List[Tuple[LineString, LineString, float, float]]) -> Tuple[List[Tuple[LineString, LineString, float, float]], List[Tuple[LineString, LineString, float, float]]]:
+		haveOverlap = []
+		dontHaveOverlap = []
+		for interval1 in intervals:
+			for interval2 in intervals:
+				if self._checkIntervalsForOverlap(interval1[2:], interval2[2:]):
+					foundOverlap = True
+					haveOverlap.append(interval1)
 					break
-			if latestTime < minLatestTime:
-				minLatestTime = latestTime
-			return minLatestTime
+			if not foundOverlap:
+				dontHaveOverlap.append(interval1)
+		return (haveOverlap, dontHaveOverlap)
 
-	def _findIntermediateComponentEvents(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon, envMap: Map, depth=0):
-		if depth > 10: return
-		# Look for changes in colliding edges
-		(thereIsChange, previousEdges, currentEdges) = self._checkChangesInCollidingEdges(previousFovPolygon, currentFovPolygon, envMap)
-		# If there are no changes, we don't need to include the layer in our timesteps
-		if not thereIsChange: return
-		# Find affine transformation, we use the matrix to find all the intermediate component events in this period
-		transform = self._getAffineTransformation(previousFovPolygon, currentFovPolygon)
-		for edge in previousEdges:
-			time = self._findTheLastTimeTheyAreColliding(previousFovPolygon, edge, transform)
-		newTransform = Geometry.getParameterizedAffineTransformation(transform, 0.5)
-		intermediatePolygon = self._applyAffineTransformation(newTransform, previousFovPolygon)
-		self.reza.append(intermediatePolygon)
-		self._findIntermediateComponentEvents(previousFovPolygon, intermediatePolygon, envMap, depth + 1)
-		self._findIntermediateComponentEvents(intermediatePolygon, currentFovPolygon, envMap, depth + 1)
+	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, envMap: Map, queryStartTime = 0, queryEndTime = 1) -> List[Polygon]:
+		"""
+			Given the original configuration of the FOV (`previousSensor`) and the final configuration (`currentSensor`)
+			find all the times where there is a shadow component event.
+
+			That is, as the FOV moves towards its final configuration save the intermediate configurations for which there is a topological change (FOV hitting a "gap").
+			#### Returns
+			A list of intermediate between which there is at most one component event.
+		"""
+		transformation = self._getAffineTransformation(previousSensor.polygon, currentSensor.polygon)
+		previousCollidingEdges = self._getCollidingEdgesByEdge(previousSensor, envMap)
+		currentCollidingEdges = self._getCollidingEdgesByEdge(currentSensor, envMap)
+		# This Priority Queue holds a list of intervals.
+		# The list is ordered from earliest to latest time the edges are in contact with the polygon's edge.
+		# Each item in the pQ is a tuple: (time, sensorEdge, staticEdge)
+		# keyFunc = lambda x: x[0]
+		# pQ = PriorityQ(keyFunc)
+		intervals = []
+		for previousSensorEdgeId in previousCollidingEdges:
+			staticEdges = previousCollidingEdges[previousSensorEdgeId]
+			if (len(staticEdges) == 0): continue
+			movingEdge = previousSensor.edges[previousSensorEdgeId]
+			for staticEdge in staticEdges:
+				collsionCheckResults = self._checkIntervalForCollision(
+					movingEdge=movingEdge,
+					staticEdge=staticEdge,
+					transformation=transformation,
+					intervalStart=queryStartTime,
+					intervalEnd=queryEndTime)
+				if collsionCheckResults[0] == collsionCheckResults[1]: continue
+				intervals.append((movingEdge, staticEdge, queryStartTime, queryEndTime))
+		haveOverlap = intervals
+		dontHaveOverlap = []
+		while len(haveOverlap) > 0:
+			(movingEdge, staticEdge, intervalStart, intervalEnd) = haveOverlap.pop(0)
+			collsionCheckResults = self._checkIntervalForCollision(
+				movingEdge=movingEdge,
+				staticEdge=staticEdge,
+				transformation=transformation,
+				intervalStart=intervalStart,
+				intervalEnd=intervalEnd)
+			if collsionCheckResults[0] == collsionCheckResults[1]: continue
+			midInterval = (intervalStart + intervalEnd) / 2
+			if midInterval == intervalStart and midInterval == intervalEnd:
+				i = 0
+			haveOverlap.append((movingEdge, staticEdge, intervalStart, midInterval))
+			haveOverlap.append((movingEdge, staticEdge, midInterval, intervalEnd))
+			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
+		return []
+		for currentSensorEdgeId in currentCollidingEdges:
+			staticEdges = currentCollidingEdges[currentSensorEdgeId]
+			if (len(staticEdges) == 0): continue
+			movingEdgeFinalConfig = currentSensor.edges[currentSensorEdgeId]
+			movingEdge = previousSensor.getEquivalentEdge(movingEdgeFinalConfig, transformation)
+			if movingEdge is None: raise("Unexpected, based on this transformation there must be an edge.")
+			for staticEdge in staticEdges:
+				time = Geometry.findTheEarliestTimeTheyAreColliding(movingEdge, staticEdge, transformation)
+				pQ.enqueue((time, currentSensorEdgeId, staticEdge))
+				intermidiateTransform = Geometry.getParameterizedAffineTransformation(transformation, time)
+				intermidiatePolygon = Geometry.applyMatrixTransformToPolygon(intermidiateTransform, previousSensor.polygon)
+				# self.blue.append(intermidiatePolygon)
+		return []
 
 	def _build(self, graphs: List[ConnectivityGraph], startInd = 0, endInd = None):
 		if endInd is None: endInd = len(graphs)
@@ -163,7 +191,11 @@ class TimedGraph(nx.DiGraph):
 		for i in range(startInd, endInd):
 			currentLayer = graphs[i]
 			if previousLayer is not None:
-				self._findIntermediateComponentEvents(previousLayer.fov.polygon, currentLayer.fov.polygon, previousLayer.map)
+				for sensorId in previousLayer.fov.sensors:
+					self._findIntermediateComponentEvents(
+						previousLayer.fov.sensors[sensorId].region,
+						currentLayer.fov.getEquivalentSensorById(sensorId).region,
+						previousLayer.map)
 				return
 
 			layerIndex = len(self.nodesByLayer)
@@ -214,8 +246,7 @@ class TimedGraph(nx.DiGraph):
 							if not connectedTemporally: break
 						if not connectedTemporally: continue
 						self._addTemporalEdge(n1, n2)
-					# FIXME: 2- GO TO FIXME: 1 BEFORE THIS - Now do the test for the coordinates to see if any FOV crossed it
-					# self._oldAlg(n1 ,n2)
+					self._oldAlg(n1 ,n2)
 			previousLayer = currentLayer
 		endTime = time.time()
 		print("%.3f s" % (endTime - startTime))

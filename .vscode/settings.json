@@ -1,12 +1,14 @@
 {
     "cSpell.words": [
+        "fovs",
+        "heapify",
+        "heapq",
         "Reza",
         "Slerp",
         "Tianqi",
         "Vect",
         "Vects",
-        "Verts",
-        "fovs"
+        "Verts"
     ],
     "python.autoComplete.extraPaths": [
         "/home/agc2/catkin_ws/devel/lib/python3/dist-packages",

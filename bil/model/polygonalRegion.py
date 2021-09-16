@@ -1,5 +1,6 @@
 from shapely.geometry import LineString, Point, Polygon
 from typing import Dict, List, Tuple
+from skimage import transform
 
 from bil.gui.drawing import Drawing
 from bil.utils.geometry import Geometry
@@ -20,7 +21,7 @@ class PolygonalRegion:
 		self.polygon = Polygon(self._coordsList) if polygon is None else polygon
 		self.BOUNDARY_COLOR = boundaryColor
 		self.BACKGROUND_COLOR = backgroundColor
-		self._edges = self._buildEdges(self._coordsList)
+		self.edges = self._buildEdges(self._coordsList)
 		self.canvasId = None
 		self.textId = None
 
@@ -33,7 +34,7 @@ class PolygonalRegion:
 			d[Geometry.pointStringId(c[0], c[1])] = Point(c[0], c[1])
 		return d
 
-	def _buildEdges(self, coords):
+	def _buildEdges(self, coords) -> Dict[str, LineString]:
 		d = {}
 		for i in range(len(coords) - 1):
 			c1 = coords[i]
@@ -47,13 +48,24 @@ class PolygonalRegion:
 		return d
 
 	def _hasEdgeByXy(self, x1, y1, x2, y2):
-		return Geometry.coordListStringId(x1, y1, x2, y2) in self._edges
+		return Geometry.coordListStringId(x1, y1, x2, y2) in self.edges
 
 	def _hasEdgeByName(self, name):
-		return name in self._edges
+		return name in self.edges
 
 	def isInsideRegion(self, x, y):
 		return Geometry.isXyInsidePolygon(x, y, self.polygon)
+
+	def getEquivalentEdge(self, finalConfig: LineString, transformation: transform.AffineTransform) -> LineString:
+		"""
+			Given an affine transformation, and the final configuration of an edge after the transformation,
+			find the edge that will be in that final configuration after the transformation, and `None` otherwise. Boy didn't I repeat myself?!
+		"""
+		for edge in self.edges.values():
+			afterTransformation = Geometry.applyMatrixTransformToLineString(transformation, edge)
+			if Geometry.lineSegmentsAreAlmostEqual(finalConfig, afterTransformation): return edge
+		return None
+
 
 	def intersectsRegion(self, other: "PolygonalRegion"):
 		return Geometry.polygonAndPolygonIntersect(self.polygon, other.polygon)
@@ -62,8 +74,8 @@ class PolygonalRegion:
 		return Geometry.union([r.polygon for r in others].append(self.polygon))
 
 	def getCommonEdge(self, other) -> LineString:
-		for e in self._edges:
-			if other._hasEdgeByName(e): return self._edges[e]
+		for e in self.edges:
+			if other._hasEdgeByName(e): return self.edges[e]
 		return None
 
 	def render(self, canvas, renderText=False, hashFill=False, hashDensity=25):

@@ -8,6 +8,9 @@ class FOV:
 		self._polygon = None
 		self.sensors: Dict[tuple, Sensor] = sensors
 
+	def __repr__(self):
+		return "FOV-%s" % repr(self.sensors)
+
 	@property
 	def polygon(self):
 		if self._polygon is None:
@@ -21,5 +24,5 @@ class FOV:
 		for sensorId in self.sensors:
 			return self.sensors[sensorId].pose.time
 
-	def __repr__(self):
-		return "FOV-%s" % repr(self.sensors)
+	def getEquivalentSensorById(self, sensorId: tuple) -> Sensor:
+		return self.sensors[(self.time, sensorId[1])]

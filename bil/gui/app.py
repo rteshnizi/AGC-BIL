@@ -170,7 +170,8 @@ class App(tk.Frame):
 		g1 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(previousIndex).fov, self.spec.validators)
 		g2 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(nextIndex).fov, self.spec.validators)
 		chained = TimedGraph([g1, g2])
-		[Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "RED", "", 2, "REZA") for poly in chained.reza]
+		[Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "RED", "", 1, "RED") for poly in chained.red]
+		[Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "BLUE", "", 1, "BLUE") for poly in chained.blue]
 		# print(list(chained.reza.coords))
 		# GraphAlgorithms.displayGraphAuto(chained, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 

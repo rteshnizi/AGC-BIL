@@ -8,7 +8,6 @@ from skimage import transform
 from scipy.spatial.transform import Rotation, Slerp
 import operator
 import numpy as np
-
 class Geometry:
 	EPSILON = 0.001
 	Vector = Tuple[float, float]
@@ -21,6 +20,19 @@ class Geometry:
 		d1 = Geometry.distanceFromVects(vect1, vect2)
 		margin = Geometry.EPSILON if withinEpsilon else 0
 		return d1 <= margin
+
+	@staticmethod
+	def coordsAreAlmostEqual(coords1: Coords, coords2: Coords) -> bool:
+		d1 = Geometry.distance(coords1[0], coords1[1], coords2[0], coords2[1])
+		return d1 <= 0.1 # EPSILON is too large unfortunately
+
+	@staticmethod
+	def lineSegmentsAreAlmostEqual(l1: LineString, l2: LineString) -> bool:
+		l1Coords = list(l1.coords)
+		l2Coords = list(l2.coords)
+		if Geometry.coordsAreAlmostEqual(l1Coords[0], l2Coords[0]) and Geometry.coordsAreAlmostEqual(l1Coords[1], l2Coords[1]): return True
+		if Geometry.coordsAreAlmostEqual(l1Coords[0], l2Coords[1]) and Geometry.coordsAreAlmostEqual(l1Coords[1], l2Coords[0]): return True
+		return False
 
 	@staticmethod
 	def vectLength(x, y) -> float:
@@ -115,7 +127,7 @@ class Geometry:
 
 	@staticmethod
 	def pointStringId(x: float, y: float) -> str:
-		return "%.5f,%.5f" % (x, y)
+		return "%.2f,%.2f" % (x, y)
 
 	@staticmethod
 	def lineSegStringId(line: LineString) -> frozenset:
@@ -243,7 +255,7 @@ class Geometry:
 			for v1, v2 in zip(verts, verts[1:]):
 				edge = LineString([v1, v2])
 				if Geometry.isPointOnLine(point, edge):
-					edges.append((v1, v2))
+					edges.append(edge)
 					break
 		return edges
 
@@ -258,10 +270,24 @@ class Geometry:
 		return matrix
 
 	@staticmethod
-	def getParameterizedAffineTransformation(matrix: transform.AffineTransform, param: float) -> transform.AffineTransform:
+	def getParameterizedAffineTransformation(transformation: transform.AffineTransform, param: float) -> transform.AffineTransform:
+		"""
+			Given an affine transformation and a parameter between 0 and 1, this method returns a linear interpolation transformation.
+
+			### Remarks
+			This method returns an affine transformation that provides a linear interpolation of the given transformation, on the following assumptions:
+			* `param` is in [0, 1] interval,
+			* The affine transformation at `param == 0` is Identity Matrix,
+			* The affine transformation at `param == 1` is the given transformation,
+			* A slerp method is used to obtain the rotation interpolation.
+		"""
 		if param > 1 or param < 0:
-			raise "Parameter should be in range [0, 1]"
-		scale = [((matrix.scale[0] - 1) * param) + 1, ((matrix.scale[1] - 1) * param) + 1]
+			raise("Parameter should be in range [0, 1]")
+		# Easy cases that do not need calculation
+		if param == 0: return transform.AffineTransform(np.identity(3))
+		if param == 1: return transformation
+		# Other params
+		scale = [((transformation.scale[0] - 1) * param) + 1, ((transformation.scale[1] - 1) * param) + 1]
 		rotations = Rotation.from_matrix([
 			[
 				[1, 0, 0],
@@ -269,28 +295,64 @@ class Geometry:
 				[0, 0, 1]
 			],
 			[
-				[matrix.params[0][0], matrix.params[0][1], 0],
-				[matrix.params[1][0], matrix.params[1][1], 0],
+				[transformation.params[0][0], transformation.params[0][1], 0],
+				[transformation.params[1][0], transformation.params[1][1], 0],
 				[0, 0, 1]
 			]
 		])
 		slerp = Slerp([0, 1], rotations)
 		rotation = slerp([0, param, 1])[1].as_euler('xyz')[2]
-		shear = matrix.shear * param
-		translation = [matrix.translation[0] * param, matrix.translation[1] * param]
+		shear = transformation.shear * param
+		translation = [transformation.translation[0] * param, transformation.translation[1] * param]
 		parameterizedMatrix = transform.AffineTransform(matrix=None, scale=scale, rotation=rotation, shear=shear, translation=translation)
 		return parameterizedMatrix
 
 	@staticmethod
-	def applyMatrixTransformToPolygon(matrix: transform.AffineTransform, polygon: Polygon) -> Polygon:
+	def applyMatrixTransformToPolygon(transformation: transform.AffineTransform, polygon: Polygon) -> Polygon:
 		coords = list(polygon.exterior.coords)
-		transformedCoords = transform.matrix_transform(coords, matrix.params)
+		transformedCoords = transform.matrix_transform(coords, transformation.params)
 		transformedPolygon = Polygon(transformedCoords)
 		return transformedPolygon
 
 	@staticmethod
-	def applyMatrixTransformToLineString(matrix: transform.AffineTransform, line: LineString) -> Polygon:
+	def findTheLastTimeTheyAreColliding(movingEdge: LineString, staticEdge: LineString, transformation: transform.AffineTransform) -> float:
+		"""
+			### Remarks
+			This assumes the edges are in contact already.
+		"""
+		NUM_SAMPLES = 100
+		latestTime = inf
+		# If the edge is not intersecting currently, we don't need to check for the latest time
+		if Geometry.intersectLineSegments(movingEdge, staticEdge) is None:
+			return latestTime
+		for x in range(1, NUM_SAMPLES, 1):
+			fraction = x / NUM_SAMPLES
+			newTransform = Geometry.getParameterizedAffineTransformation(transformation, fraction)
+			intermediateLine = Geometry.applyMatrixTransformToLineString(newTransform, movingEdge)
+			if Geometry.intersectLineSegments(intermediateLine, staticEdge) is not None:
+				latestTime = fraction
+			else:
+				break
+		return latestTime
+
+	@staticmethod
+	def findTheEarliestTimeTheyAreColliding(movingEdge: LineString, staticEdge: LineString, transformation: transform.AffineTransform) -> float:
+		NUM_SAMPLES = 100
+		latestTime = inf
+		for x in range(0, NUM_SAMPLES, 1):
+			fraction = x / NUM_SAMPLES
+			newTransform = Geometry.getParameterizedAffineTransformation(transformation, fraction)
+			intermediateLine = Geometry.applyMatrixTransformToLineString(newTransform, movingEdge)
+			if Geometry.intersectLineSegments(intermediateLine, staticEdge):
+				latestTime = fraction
+				break
+		return latestTime
+
+	@staticmethod
+	def applyMatrixTransformToLineString(transformation: transform.AffineTransform, line: LineString) -> LineString:
 		coords = list(line.coords)
-		transformedCoords = transform.matrix_transform(coords, matrix.params)
+		transformedCoords = transform.matrix_transform(coords, transformation.params)
 		transformedLineString = LineString(transformedCoords)
 		return transformedLineString
+
+LineString.__repr__ = lambda l: "LineString"
