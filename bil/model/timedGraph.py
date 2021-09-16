@@ -110,7 +110,9 @@ class TimedGraph(nx.DiGraph):
 		haveOverlap = []
 		dontHaveOverlap = []
 		for interval1 in intervals:
+			foundOverlap = False
 			for interval2 in intervals:
+				if interval1 == interval2: continue
 				if self._checkIntervalsForOverlap(interval1[2:], interval2[2:]):
 					foundOverlap = True
 					haveOverlap.append(interval1)
@@ -153,19 +155,16 @@ class TimedGraph(nx.DiGraph):
 		haveOverlap = intervals
 		dontHaveOverlap = []
 		while len(haveOverlap) > 0:
-			(movingEdge, staticEdge, intervalStart, intervalEnd) = haveOverlap.pop(0)
-			collsionCheckResults = self._checkIntervalForCollision(
-				movingEdge=movingEdge,
-				staticEdge=staticEdge,
-				transformation=transformation,
-				intervalStart=intervalStart,
-				intervalEnd=intervalEnd)
-			if collsionCheckResults[0] == collsionCheckResults[1]: continue
-			midInterval = (intervalStart + intervalEnd) / 2
-			if midInterval == intervalStart and midInterval == intervalEnd:
-				i = 0
-			haveOverlap.append((movingEdge, staticEdge, intervalStart, midInterval))
-			haveOverlap.append((movingEdge, staticEdge, midInterval, intervalEnd))
+			i = 0
+			while i < len(haveOverlap):
+				(movingEdge, staticEdge, intervalStart, intervalEnd) = haveOverlap.pop(i)
+				collsionCheckResults = self._checkIntervalForCollision(movingEdge, staticEdge, transformation, intervalStart, intervalEnd)
+				if collsionCheckResults[0] == collsionCheckResults[1]: continue
+				midInterval = (intervalStart + intervalEnd) / 2
+				haveOverlap.insert(i, (movingEdge, staticEdge, intervalStart, midInterval))
+				i += 1
+				haveOverlap.insert(i, (movingEdge, staticEdge, midInterval, intervalEnd))
+				i += 1
 			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
 		return []
 		for currentSensorEdgeId in currentCollidingEdges:

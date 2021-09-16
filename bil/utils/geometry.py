@@ -355,4 +355,4 @@ class Geometry:
 		transformedLineString = LineString(transformedCoords)
 		return transformedLineString
 
-LineString.__repr__ = lambda l: "LineString"
+LineString.__repr__ = lambda l: "LS"
