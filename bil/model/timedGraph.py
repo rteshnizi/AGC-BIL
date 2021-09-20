@@ -121,7 +121,7 @@ class TimedGraph(nx.DiGraph):
 				dontHaveOverlap.append(interval1)
 		return (haveOverlap, dontHaveOverlap)
 
-	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, envMap: Map, queryStartTime = 0, queryEndTime = 1) -> List[Polygon]:
+	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, envMap: Map) -> List[Polygon]:
 		"""
 			Given the original configuration of the FOV (`previousSensor`) and the final configuration (`currentSensor`)
 			find all the times where there is a shadow component event.
@@ -144,14 +144,9 @@ class TimedGraph(nx.DiGraph):
 			if (len(staticEdges) == 0): continue
 			movingEdge = previousSensor.edges[previousSensorEdgeId]
 			for staticEdge in staticEdges:
-				collsionCheckResults = self._checkIntervalForCollision(
-					movingEdge=movingEdge,
-					staticEdge=staticEdge,
-					transformation=transformation,
-					intervalStart=queryStartTime,
-					intervalEnd=queryEndTime)
+				collsionCheckResults = self._checkIntervalForCollision(movingEdge, staticEdge, transformation, intervalStart=0, intervalEnd=1)
 				if collsionCheckResults[0] == collsionCheckResults[1]: continue
-				intervals.append((movingEdge, staticEdge, queryStartTime, queryEndTime))
+				intervals.append((movingEdge, staticEdge, 0, 1))
 		haveOverlap = intervals
 		dontHaveOverlap = []
 		while len(haveOverlap) > 0:
@@ -169,8 +164,10 @@ class TimedGraph(nx.DiGraph):
 					i += 1
 			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
 			for interval in dontHaveOverlap:
-				intermediateTransform = Geometry.getParameterizedAffineTransformation(transformation, interval[3])
+				intermediateTransform = Geometry.getParameterizedAffineTransformation(transformation, interval[2])
 				self.red.append(Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon))
+				intermediateTransform = Geometry.getParameterizedAffineTransformation(transformation, interval[3])
+				self.blue.append(Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon))
 		return []
 		for currentSensorEdgeId in currentCollidingEdges:
 			staticEdges = currentCollidingEdges[currentSensorEdgeId]
