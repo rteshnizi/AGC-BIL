@@ -1,8 +1,8 @@
 from typing import Dict
 from shapely.geometry import Polygon
-from shapely.ops import unary_union
 from bil.model.featureMap import FeatureMap
 from bil.model.mapRegion import MapRegion
+from bil.utils.geometry import Geometry
 
 class Map:
 	def __init__(self, coords, regionVertIndices, typesPerRegion, featureMap):
@@ -23,7 +23,7 @@ class Map:
 
 	def _buildPolygon(self):
 		polygons = [self.regions[r].polygon for r in self.regions]
-		polygon = unary_union(polygons)
+		polygon = Geometry.union(polygons)
 		return polygon
 
 	def render(self, canvas):

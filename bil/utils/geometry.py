@@ -1,5 +1,5 @@
 from shapely.geometry import LineString, MultiLineString, Point, Polygon, MultiPolygon
-from shapely.ops import cascaded_union
+from shapely.ops import unary_union
 from typing import List, Union, Tuple, Dict, Callable
 from math import pi as PI
 from math import sqrt, cos, sin, atan2, degrees, inf
@@ -8,6 +8,7 @@ from skimage import transform
 from scipy.spatial.transform import Rotation, Slerp
 import operator
 import numpy as np
+
 class Geometry:
 	EPSILON = 0.001
 	Vector = Tuple[float, float]
@@ -52,6 +53,22 @@ class Geometry:
 	@staticmethod
 	def isLineSegment(l: LineString) -> bool:
 		return isinstance(l, LineString) and len(l.coords) == 2
+
+	@staticmethod
+	def orthogonal(p1, p2) -> float:
+		return  (p2[1] - p1[1], -1 * (p2[0] - p1[0]))
+
+	@staticmethod
+	def midpoint(p1, p2) -> float:
+		return Geometry.midpointXy(p1[0], p1[1], p2[0], p2[1])
+
+	@staticmethod
+	def midpointXy(x1, y1, x2, y2) -> float:
+		return ((x1 + x2) / 2, (y1 + y2) / 2)
+
+	@staticmethod
+	def slope(x1, y1, x2, y2) -> float:
+		return (y2 - y1) / (x2 - x1)
 
 	@staticmethod
 	def distance(x1, y1, x2, y2) -> float:
@@ -162,12 +179,12 @@ class Geometry:
 		return slope
 
 	@staticmethod
-	def polygonAndPolygonIntersect(p1: Polygon, p2: Polygon):
+	def polygonAndPolygonIntersect(p1: Polygon, p2: Polygon) -> bool:
 		return p1.intersects(p2)
 
 	@staticmethod
 	def union(polyList: List[Polygon]) -> Polygon:
-		return cascaded_union(polyList)
+		return unary_union(polyList)
 
 	@staticmethod
 	def subtract(poly1: Polygon, poly2: Polygon) -> Polygon:
@@ -260,18 +277,24 @@ class Geometry:
 		return edges
 
 	@staticmethod
-	def getAffineTransformation(p: CoordsList, pPrime: CoordsList) -> transform.AffineTransform:
+	def getAffineTransformation(p: Polygon, pPrime: Polygon, centerOfRotation: Coords) -> transform.AffineTransform:
 		"""
 		see: https://stackoverflow.com/a/47102206/750567
 		"""
-		p = np.array(p)
-		pPrime = np.array(pPrime)
-		matrix = transform.estimate_transform("affine", p, pPrime)
+		pCoords = np.array(p.exterior.coords)
+		pPrimeCoords = np.array(pPrime.exterior.coords)
+		pCoords = [(coords[0] - centerOfRotation[0], coords[1] - centerOfRotation[1]) for coords in pCoords]
+		pPrimeCoords = [(coords[0] - centerOfRotation[0], coords[1] - centerOfRotation[1]) for coords in pPrimeCoords]
+		pCoords = np.array(pCoords)
+		pPrimeCoords = np.array(pPrimeCoords)
+		# matrix = transform.estimate_transform("affine", pCoords, pPrimeCoords)
+		matrix = transform.estimate_transform("similarity", pCoords, pPrimeCoords)
 		return matrix
 
 	@staticmethod
 	def getParameterizedAffineTransformation(transformation: transform.AffineTransform, param: float) -> transform.AffineTransform:
 		"""
+
 			Given an affine transformation and a parameter between 0 and 1, this method returns a linear interpolation transformation.
 
 			### Remarks
@@ -285,9 +308,10 @@ class Geometry:
 			raise("Parameter should be in range [0, 1]")
 		# Easy cases that do not need calculation
 		if param == 0: return transform.AffineTransform(np.identity(3))
-		if param == 1: return transformation
+		if param == 1: return transform.AffineTransform(transformation.params)
 		# Other params
-		scale = [((transformation.scale[0] - 1) * param) + 1, ((transformation.scale[1] - 1) * param) + 1]
+		# scale = [((transformation.scale[0] - 1) * param) + 1, ((transformation.scale[1] - 1) * param) + 1]
+		scale = 1
 		rotations = Rotation.from_matrix([
 			[
 				[1, 0, 0],
@@ -302,15 +326,20 @@ class Geometry:
 		])
 		slerp = Slerp([0, 1], rotations)
 		rotation = slerp([0, param, 1])[1].as_euler('xyz')[2]
-		shear = transformation.shear * param
+		# shear = transformation.shear * param
+		shear = 0
 		translation = [transformation.translation[0] * param, transformation.translation[1] * param]
+		# translation = [0, 0]
 		parameterizedMatrix = transform.AffineTransform(matrix=None, scale=scale, rotation=rotation, shear=shear, translation=translation)
 		return parameterizedMatrix
 
 	@staticmethod
-	def applyMatrixTransformToPolygon(transformation: transform.AffineTransform, polygon: Polygon) -> Polygon:
-		coords = list(polygon.exterior.coords)
-		transformedCoords = transform.matrix_transform(coords, transformation.params)
+	def applyMatrixTransformToPolygon(transformation: transform.AffineTransform, polygon: Polygon, centerOfRotation: Coords) -> Polygon:
+		pCoords = list(polygon.exterior.coords)
+		pCoords = [(coords[0] - centerOfRotation[0], coords[1] - centerOfRotation[1]) for coords in pCoords]
+		pCoords = np.array(pCoords)
+		transformedCoords = transform.matrix_transform(pCoords, transformation.params)
+		transformedCoords = [(coords[0] + centerOfRotation[0], coords[1] + centerOfRotation[1]) for coords in transformedCoords]
 		transformedPolygon = Polygon(transformedCoords)
 		return transformedPolygon
 
@@ -349,10 +378,13 @@ class Geometry:
 		return latestTime
 
 	@staticmethod
-	def applyMatrixTransformToLineString(transformation: transform.AffineTransform, line: LineString) -> LineString:
-		coords = list(line.coords)
-		transformedCoords = transform.matrix_transform(coords, transformation.params)
+	def applyMatrixTransformToLineString(transformation: transform.AffineTransform, line: LineString, centerOfRotation: Coords) -> LineString:
+		pCoords = list(line.coords)
+		pCoords = [(coords[0] - centerOfRotation[0], coords[1] - centerOfRotation[1]) for coords in pCoords]
+		transformedCoords = transform.matrix_transform(pCoords, transformation.params)
+		transformedCoords = [(coords[0] + centerOfRotation[0], coords[1] + centerOfRotation[1]) for coords in transformedCoords]
 		transformedLineString = LineString(transformedCoords)
 		return transformedLineString
 
 LineString.__repr__ = lambda l: "LS"
+Point.__repr__ = lambda p: "P%s" % repr((p.x, p.y))

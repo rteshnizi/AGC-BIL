@@ -1,3 +1,4 @@
+from bil.utils.geometry import Geometry
 import tkinter as tk
 
 from bil.gui.canvas import Canvas
@@ -46,12 +47,18 @@ class App(tk.Frame):
 		self.createButtons()
 		self.createDebugOptions()
 		self.canvas = Canvas(master=self.frame, app=self, row=2, col=0)
+		# Origin
 		self._renderMap()
 		self._renderTrajectories()
 		self._renderSpec()
 
 	def _renderMap(self):
 		self.bil.map.render(self.canvas.tkCanvas)
+		# Draw Axis
+		Drawing.CreateLine(self.canvas.tkCanvas, [[0, 0], [5, 0]], "PURPLE", "X-AXIS", width=2, arrow=True)
+		Drawing.CreateText(self.canvas.tkCanvas, [5, -5], "X", "X-AXIS-L")
+		Drawing.CreateLine(self.canvas.tkCanvas, [[0, 0], [0, 5]], "PURPLE", "Y-AXIS", width=2, arrow=True)
+		Drawing.CreateText(self.canvas.tkCanvas, [-5, 5], "Y", "Y-AXIS-L")
 
 	def _renderTrajectories(self, force=False):
 		if not force and not self.shouldRenderTrajectory: return
@@ -170,9 +177,23 @@ class App(tk.Frame):
 		g1 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(previousIndex).fov, self.spec.validators)
 		g2 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(nextIndex).fov, self.spec.validators)
 		chained = TimedGraph([g1, g2])
+		# [Drawing.CreateLine(self.canvas.tkCanvas, poly.coords, "RED", "", 1) for poly in chained.red]
+		[Drawing.CreateLine(self.canvas.tkCanvas, poly.coords, "PURPLE", "", 2) for poly in chained.drawLine]
 		[Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "RED", "", 1, "RED") for poly in chained.red]
 		[Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "BLUE", "", 1, "BLUE") for poly in chained.blue]
-		# print(list(chained.reza.coords))
+		# c1 = chained.blue[0].exterior.coords[1]
+		# cp1 = chained.blue[-1].exterior.coords[1]
+		# c2 = chained.blue[0].exterior.coords[2]
+		# cp2 = chained.blue[-1].exterior.coords[2]
+		# c1Mid = Geometry.midpoint(c1, cp1)
+		# c2Mid = Geometry.midpoint(c2, cp2)
+		# orthogonal1 = Geometry.orthogonal(c1, cp1)
+		# orthogonal2 = Geometry.orthogonal(c2, cp2)
+		# c1MidP = (c1Mid[0] + (10 * orthogonal1[0]), c1Mid[1] + (10 * orthogonal1[1]))
+		# Drawing.CreateLine(self.canvas.tkCanvas, [c1Mid, c1MidP], "RED", "", 1)
+		# c2MidP = (c2Mid[0] + (10 * orthogonal2[0]), c2Mid[1] + (10 * orthogonal2[1]))
+		# Drawing.CreateLine(self.canvas.tkCanvas, [c2Mid, c2MidP], "BLUE", "", 1)
+		# Drawing.CreateLine(self.canvas.tkCanvas, [c1, c1Mid, cp1], "GREEN", "", 1)
 		# GraphAlgorithms.displayGraphAuto(chained, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def chainAll(self):
