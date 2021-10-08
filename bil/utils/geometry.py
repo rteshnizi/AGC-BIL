@@ -259,7 +259,7 @@ class Geometry:
 		return False
 
 	@staticmethod
-	def getAllIntersectingEdges(line: LineString, polygon: Union[Polygon, MultiPolygon]) -> List[LineString]:
+	def getAllIntersectingEdgesWithLine(line: LineString, polygon: Union[Polygon, MultiPolygon]) -> List[LineString]:
 		if isinstance(polygon, MultiPolygon):
 			raise "I haven't checked the API to see how to work with this yet."
 		edges = []
@@ -270,6 +270,26 @@ class Geometry:
 		points = [points] if isinstance(points, Point) else list(points)
 		for point in points:
 			for v1, v2 in zip(verts, verts[1:]):
+				edge = LineString([v1, v2])
+				if Geometry.isPointOnLine(point, edge):
+					edges.append(edge)
+					break
+		return edges
+
+	@staticmethod
+	def getAllIntersectingEdgesWithPolygon(polygon1: Polygon, polygon2: Union[Polygon, MultiPolygon]) -> List[LineString]:
+		if isinstance(polygon2, MultiPolygon):
+			raise "I haven't checked the API to see how to work with this yet."
+		edges = []
+		polygon1Verts = list(polygon1.exterior.coords)
+		polygon1Boundary = LineString(polygon1Verts)
+		polygon2Verts = list(polygon2.exterior.coords)
+		polygon2Boundary = LineString(polygon2Verts)
+		points = polygon2Boundary.intersection(polygon1Boundary)
+		if points.is_empty: return edges
+		points = [points] if isinstance(points, Point) else list(points)
+		for point in points:
+			for v1, v2 in zip(polygon2Verts, polygon2Verts[1:]):
 				edge = LineString([v1, v2])
 				if Geometry.isPointOnLine(point, edge):
 					edges.append(edge)
