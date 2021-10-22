@@ -15,7 +15,7 @@ from bil.utils.priorityQ import PriorityQ
 class TimedGraph(nx.DiGraph):
 	def __init__(self, graphs: List[ConnectivityGraph], startInd = 0, endInd = None):
 		super().__init__()
-		self.MIN_TIME_DELTA = 0.01
+		self.MIN_TIME_DELTA = 1E-2
 		self._nodeLayers = []
 		self._timeStamps = []
 		self._regionNodes = []
@@ -25,6 +25,11 @@ class TimedGraph(nx.DiGraph):
 		self.red = []
 		self.blue = []
 		self.drawLine = []
+		# TODO: DEBUGGING
+		self.shardIntervals = None
+		self.ingoingIntervals = []
+		self.outgoingIntervals = []
+
 		print("Connecting Graphs through time...")
 		self._fig = None
 		self.nodeClusters: Dict[str, Set[str]] = {}
@@ -97,21 +102,32 @@ class TimedGraph(nx.DiGraph):
 		movingEdgeEndConfiguration = Geometry.applyMatrixTransformToLineString(endConfigTransformation, movingEdge, centerOfRotation)
 		return (movingEdgeStartConfiguration.intersects(staticEdge), movingEdgeEndConfiguration.intersects(staticEdge))
 
-	def _checkBoundingBoxIntervalForCollision(self, sensor: SensingRegion, movingEdge: LineString, staticEdge: LineString, transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords, intervalStart: float, intervalEnd: float) -> Tuple[bool, bool]:
+	def _checkBoundingBoxIntervalForCollision(self, sensor: SensingRegion, movingEdge: LineString, staticEdge: LineString, transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords, intervalStart: float, intervalEnd: float) -> Tuple[Tuple[bool, bool, bool], Polygon, Polygon, LineString]:
+		"""
+			#### Returns
+			Given the configuration information, it returns a tuple: `((bool, bool, bool), Polygon, Polygon)`
+			1. A tuple of the state of collision in the interval: `(isCollidingAtStart, isCollidingAtMid, isCollidingAtEnd)`
+			2. firstHalfBb
+			3. secondHalfBb
+		"""
 		startConfigTransformation = Geometry.getParameterizedAffineTransformation(transformation, intervalStart)
 		edgeAtStart = Geometry.applyMatrixTransformToLineString(startConfigTransformation, movingEdge, centerOfRotation)
+		isCollidingAtStart = Geometry.intersectLineSegments(edgeAtStart, staticEdge) is not None
 		endConfigTransformation = Geometry.getParameterizedAffineTransformation(transformation, intervalEnd)
+		edgeAtEnd = Geometry.applyMatrixTransformToLineString(endConfigTransformation, movingEdge, centerOfRotation)
+		isCollidingAtEnd = Geometry.intersectLineSegments(edgeAtEnd, staticEdge) is not None
 		intervalMid = (intervalStart + intervalEnd) / 2
-		firstHalfTransformation = Geometry.getParameterizedAffineTransformation(transformation, intervalMid)
-		edgeAtMid = Geometry.applyMatrixTransformToLineString(firstHalfTransformation, movingEdge, centerOfRotation)
-		midSensor = Geometry.applyMatrixTransformToPolygon(firstHalfTransformation, sensor.polygon, centerOfRotation)
+		midConfigTransformation = Geometry.getParameterizedAffineTransformation(transformation, intervalMid)
+		edgeAtMid = Geometry.applyMatrixTransformToLineString(midConfigTransformation, movingEdge, centerOfRotation)
+		isCollidingAtMid = Geometry.intersectLineSegments(edgeAtMid, staticEdge) is not None
+		startSensor = Geometry.applyMatrixTransformToPolygon(startConfigTransformation, sensor.polygon, centerOfRotation)
+		midSensor = Geometry.applyMatrixTransformToPolygon(midConfigTransformation, sensor.polygon, centerOfRotation)
 		endSensor = Geometry.applyMatrixTransformToPolygon(endConfigTransformation, sensor.polygon, centerOfRotation)
+		firstHalfTransformation = Geometry.getAffineTransformation(startSensor, midSensor, centerOfRotation)
 		secondHalfTransformation = Geometry.getAffineTransformation(midSensor, endSensor, centerOfRotation)
 		firstHalfBb = self._getLineSegmentExpandedBb(firstHalfTransformation, edgeAtStart, firstHalfTransformation.rotation, centerOfRotation)
 		secondHalfBb = self._getLineSegmentExpandedBb(secondHalfTransformation, edgeAtMid, secondHalfTransformation.rotation, centerOfRotation)
-		self.red.append(firstHalfBb)
-		self.blue.append(secondHalfBb)
-		return (firstHalfBb.intersects(staticEdge), secondHalfBb.intersects(staticEdge))
+		return ((isCollidingAtStart, isCollidingAtMid, isCollidingAtEnd), firstHalfBb, secondHalfBb, edgeAtMid)
 
 	def _checkIntervalsForOverlap(self, interval1: Tuple[float, float], interval2: Tuple[float, float]) -> bool:
 		# If end of one interval happens earlier than the other
@@ -135,18 +151,16 @@ class TimedGraph(nx.DiGraph):
 		return (haveOverlap, dontHaveOverlap)
 
 	def _expandVertObbWithAngularVelocity(self, coords: Geometry.Coords, angle: float, centerOfRotation: Geometry.Coords, expandAway = True):
-			displacement = (coords[0] - centerOfRotation[0], coords[1] - centerOfRotation[1])
-			vertExpansion = (angle * displacement[0], angle * displacement[1])
-			expanded = (coords[0] + vertExpansion[0], coords[1] + vertExpansion[1]) if expandAway else (coords[0] - vertExpansion[0], coords[1] - vertExpansion[1])
-			return expanded
+		displacement = (coords[0] - centerOfRotation[0], coords[1] - centerOfRotation[1])
+		vertExpansion = (angle * displacement[0], angle * displacement[1])
+		expanded = (coords[0] + vertExpansion[0], coords[1] + vertExpansion[1]) if expandAway else (coords[0] - vertExpansion[0], coords[1] - vertExpansion[1])
+		return expanded
 
 	def _getLineSegmentExpandedBb(self, transformation: transform.AffineTransform, lineSeg: LineString, angle: float, centerOfRotation: Geometry.Coords) -> Polygon:
 		"""
 			Gets a tight bounding box for a line segment that is moving with a constant angular velocity.
 		"""
 		finalConfig = Geometry.applyMatrixTransformToLineString(transformation, lineSeg, centerOfRotation)
-		originalObb = Polygon([lineSeg.coords[0], finalConfig.coords[0], finalConfig.coords[1], lineSeg.coords[1]])
-		# self.blue.append(originalObb)
 		polygons = []
 		for j in range(16):
 			v1 = self._expandVertObbWithAngularVelocity(lineSeg.coords[0], angle, centerOfRotation, j & 1 != 0)
@@ -156,10 +170,14 @@ class TimedGraph(nx.DiGraph):
 			p = Polygon([v1, v2, v3, v4])
 			polygons.append(p)
 		expandedObb = Geometry.union(polygons)
-		# self.red.append(expandedObb)
+		expandedObb = expandedObb.convex_hull
 		return expandedObb
 
 	def _findShards(self, sensor: SensingRegion, transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords, envMap: Map) -> Dict[str, Set[LineString]]:
+		"""
+			#### Returns
+				For each edge of the sensor, it returns all the edges of the map that intersect the expanded bounding box of that edge
+		"""
 		collisionData = {}
 		angle = abs(transformation.rotation)
 		for sensorEdgeId in sensor.edges:
@@ -168,14 +186,16 @@ class TimedGraph(nx.DiGraph):
 			collisionData[sensorEdgeId] = Geometry.getAllIntersectingEdgesWithPolygon(boundingBox, envMap.polygon)
 		return collisionData
 
-	def _initEdgeIntervals(self, sensor: SensingRegion, transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords, collisionData: Dict[str, Set[LineString]]):
+	def _initEdgeIntervals(self, sensor: SensingRegion, transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords, collisionData: Dict[str, Set[LineString]], inverse: bool):
 		intervals = []
-		for previousSensorEdgeId in collisionData:
-			mapEdges = collisionData[previousSensorEdgeId]
+		intStart = 1 if inverse else 0
+		intEnd = 0 if inverse else 1
+		for sensorEdgeId in collisionData:
+			mapEdges = collisionData[sensorEdgeId]
 			if (len(mapEdges) == 0): continue
-			sensorEdge = sensor.edges[previousSensorEdgeId]
+			sensorEdge = sensor.edges[sensorEdgeId]
 			for mapEdge in mapEdges:
-				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalStart=0, intervalEnd=1)
+				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalStart=intStart, intervalEnd=intEnd)
 				if collsionCheckResults[0] == collsionCheckResults[1]: continue
 				intervals.append((sensorEdge, mapEdge, 0, 1))
 		return intervals
@@ -190,6 +210,35 @@ class TimedGraph(nx.DiGraph):
 				intervals.append((sensorEdge, mapEdge, 0, 1))
 		return intervals
 
+	def _findEventIntervalsForShards(self):
+		i = 0
+		while i < len(self.shardIntervals):
+			(sensorEdge, mapEdge, intervalStart, intervalEnd) = self.shardIntervals.pop(i)
+			# Epsilon for shard search
+			deltaT = intervalEnd - intervalStart
+			if deltaT <= self.MIN_TIME_DELTA:
+				continue
+			((isCollidingAtStart, isCollidingAtMid, isCollidingAtEnd), firstHalfBb, secondHalfBb, edgeAtMid) = self._checkBoundingBoxIntervalForCollision(self.previousSensor, sensorEdge, mapEdge, self.transformation, self.centerOfRotation, intervalStart, intervalEnd)
+			intervalMid = (intervalStart + intervalEnd) / 2
+			if isCollidingAtStart != isCollidingAtMid:
+				if isCollidingAtStart and not isCollidingAtMid:
+					self.outgoingIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+				else:
+					self.ingoingIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+			if isCollidingAtMid != isCollidingAtEnd:
+				if isCollidingAtMid and not isCollidingAtEnd:
+					self.outgoingIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+				else:
+					self.ingoingIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+			if isCollidingAtStart == isCollidingAtMid and isCollidingAtMid == isCollidingAtEnd:
+				if firstHalfBb.intersects(mapEdge):
+					self.shardIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+					i += 1
+				if secondHalfBb.intersects(mapEdge):
+					self.shardIntervals.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
+					i += 1
+		return
+
 	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, envMap: Map) -> List[Polygon]:
 		"""
 			Given the original configuration of the FOV (`previousSensor`) and the final configuration (`currentSensor`)
@@ -199,56 +248,64 @@ class TimedGraph(nx.DiGraph):
 			#### Returns
 			A list of intermediate between which there is at most one component event.
 		"""
-		centerOfRotation = previousSensor.polygon.exterior.coords[3]
-		transformation = Geometry.getAffineTransformation(previousSensor.polygon, currentSensor.polygon, centerOfRotation)
+		self.previousSensor = previousSensor
+		self.centerOfRotation = previousSensor.polygon.exterior.coords[3]
+		self.transformation = Geometry.getAffineTransformation(previousSensor.polygon, currentSensor.polygon, self.centerOfRotation)
 		previousCollidingEdges = self._getCollidingEdgesByEdge(previousSensor, envMap)
 		currentCollidingEdges = self._getCollidingEdgesByEdge(currentSensor, envMap)
-		shards = self._findShards(previousSensor, transformation, centerOfRotation, envMap)
+		shards = self._findShards(previousSensor, self.transformation, self.centerOfRotation, envMap)
+		# Remove the edges that we are sure are intersecting
+		for id in previousCollidingEdges:
+			for l in previousCollidingEdges[id]:
+				shards[id].remove(l)
+		self.shardIntervals = self._initShardIntervals(previousSensor, shards)
+
+		while len(self.shardIntervals) > 0:
+			self._findEventIntervalsForShards()
+
 		# Each interval is represented as a tuple: (sensorEdge, mapEdge, float, float)
 		# The first float is the interval start and the second one is interval end times.
-		intervals = self._initEdgeIntervals(previousSensor, transformation, centerOfRotation, previousCollidingEdges)
-		shardIntervals = self._initShardIntervals(previousSensor, shards)
-
-		haveOverlap = shardIntervals
-		dontHaveOverlap = []
-		while len(haveOverlap) > 0:
-			i = 0
-			while i < len(haveOverlap):
-				(sensorEdge, mapEdge, intervalStart, intervalEnd) = haveOverlap.pop(i)
-				collsionCheckResults = self._checkBoundingBoxIntervalForCollision(previousSensor, sensorEdge, mapEdge, transformation, centerOfRotation, intervalStart, intervalEnd)
-				intervalMid = (intervalStart + intervalEnd) / 2
-				if collsionCheckResults[0]:
-					haveOverlap.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
-					i += 1
-				if collsionCheckResults[1]:
-					haveOverlap.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
-					i += 1
-				return
-			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
-			for interval in dontHaveOverlap:
-				intermediateTransform = Geometry.getParameterizedAffineTransformation(transformation, interval[3])
-				self.blue.append(Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, centerOfRotation))
-		return
-
-		haveOverlap = intervals
+		intervals = self._initEdgeIntervals(previousSensor, self.transformation, self.centerOfRotation, previousCollidingEdges, inverse=False)
+		haveOverlap = intervals + self.outgoingIntervals
 		dontHaveOverlap = []
 		while len(haveOverlap) > 0:
 			i = 0
 			while i < len(haveOverlap):
 				(sensorEdge, mapEdge, intervalStart, intervalEnd) = haveOverlap.pop(i)
 				intervalMid = (intervalStart + intervalEnd) / 2
-				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalStart, intervalMid)
+				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, self.transformation, self.centerOfRotation, intervalStart, intervalMid)
 				if collsionCheckResults[0] != collsionCheckResults[1]:
 					haveOverlap.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
 					i += 1
-				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalMid, intervalEnd)
+				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, self.transformation, self.centerOfRotation, intervalMid, intervalEnd)
 				if collsionCheckResults[0] != collsionCheckResults[1]:
 					haveOverlap.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
 					i += 1
 			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
 			for interval in dontHaveOverlap:
-				intermediateTransform = Geometry.getParameterizedAffineTransformation(transformation, interval[3])
-				# self.blue.append(Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, centerOfRotation))
+				intermediateTransform = Geometry.getParameterizedAffineTransformation(self.transformation, interval[3])
+				self.blue.append(Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, self.centerOfRotation))
+
+		intervals = self._initEdgeIntervals(currentSensor, self.transformation, self.centerOfRotation, currentCollidingEdges, inverse=True)
+		haveOverlap = intervals + self.ingoingIntervals
+		dontHaveOverlap = []
+		while len(haveOverlap) > 0:
+			i = 0
+			while i < len(haveOverlap):
+				(sensorEdge, mapEdge, intervalStart, intervalEnd) = haveOverlap.pop(i)
+				intervalMid = (intervalStart + intervalEnd) / 2
+				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, self.transformation, self.centerOfRotation, intervalStart, intervalMid)
+				if collsionCheckResults[0] != collsionCheckResults[1]:
+					haveOverlap.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+					i += 1
+				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, self.transformation, self.centerOfRotation, intervalMid, intervalEnd)
+				if collsionCheckResults[0] != collsionCheckResults[1]:
+					haveOverlap.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
+					i += 1
+			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
+			for interval in dontHaveOverlap:
+				intermediateTransform = Geometry.getParameterizedAffineTransformation(self.transformation, interval[3])
+				self.red.append(Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, self.centerOfRotation))
 		return []
 
 	def _build(self, graphs: List[ConnectivityGraph], startInd = 0, endInd = None):

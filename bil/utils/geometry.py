@@ -1,4 +1,5 @@
 from shapely.geometry import LineString, MultiLineString, Point, Polygon, MultiPolygon
+from shapely.geometry.polygon import LinearRing
 from shapely.ops import unary_union
 from typing import List, Union, Tuple, Dict, Callable
 from math import pi as PI
@@ -152,7 +153,7 @@ class Geometry:
 
 	@staticmethod
 	def coordListStringId(coords: CoordsList) -> frozenset:
-		return frozenset([Geometry.pointStringId(coord[0], coord[1]) for coord in coords])
+		return tuple(Geometry.pointStringId(coord[0], coord[1]) for coord in coords)
 
 	@staticmethod
 	def lineAndPolygonIntersect(l: LineString, p: Polygon) -> bool:
@@ -192,6 +193,10 @@ class Geometry:
 
 	@staticmethod
 	def intersectLineSegments(l1: LineString, l2: LineString):
+		"""
+			#### Returns
+			Returns intersection of two line segments (`LineString`), or `None` otherwise.
+		"""
 		if not (Geometry.isLineSegment(l1) and Geometry.isLineSegment(l2)):
 			raise RuntimeError("This method is only tested for line segments")
 		r = l1.intersection(l2)
@@ -263,16 +268,18 @@ class Geometry:
 		if isinstance(polygon, MultiPolygon):
 			raise "I haven't checked the API to see how to work with this yet."
 		edges = []
+		hashes = set()
 		verts = list(polygon.exterior.coords)
-		polygonBoundary = LineString(verts)
-		points = polygonBoundary.intersection(line)
+		points = polygon.exterior.intersection(line)
 		if points.is_empty: return edges
 		points = [points] if isinstance(points, Point) else list(points)
 		for point in points:
 			for v1, v2 in zip(verts, verts[1:]):
 				edge = LineString([v1, v2])
+				if edge.wkb_hex in hashes: continue
 				if Geometry.isPointOnLine(point, edge):
 					edges.append(edge)
+					hashes.add(edge.wkb_hex)
 					break
 		return edges
 
@@ -281,6 +288,7 @@ class Geometry:
 		if isinstance(polygon2, MultiPolygon):
 			raise "I haven't checked the API to see how to work with this yet."
 		edges = []
+		hashes = set()
 		polygon1Verts = list(polygon1.exterior.coords)
 		polygon1Boundary = LineString(polygon1Verts)
 		polygon2Verts = list(polygon2.exterior.coords)
@@ -291,8 +299,10 @@ class Geometry:
 		for point in points:
 			for v1, v2 in zip(polygon2Verts, polygon2Verts[1:]):
 				edge = LineString([v1, v2])
+				if edge.wkb_hex in hashes: continue
 				if Geometry.isPointOnLine(point, edge):
 					edges.append(edge)
+					hashes.add(edge.wkb_hex)
 					break
 		return edges
 
@@ -406,5 +416,13 @@ class Geometry:
 		transformedLineString = LineString(transformedCoords)
 		return transformedLineString
 
-LineString.__repr__ = lambda l: "LS"
+	@staticmethod
+	def inverseTransformation(transformation: transform.AffineTransform) -> transform.AffineTransform:
+		inverted  = transform.AffineTransform(matrix=transformation._inv_matrix)
+		return inverted
+
 Point.__repr__ = lambda p: "P%s" % repr((p.x, p.y))
+LinearRing.__repr__ = lambda l: "LR[#%d]" % len(l.coords)
+LineString.__repr__ = lambda l: "LS[#%d]" % len(l.coords) if len(l.coords) > 2 else "LS%s" % repr(l.bounds)
+Polygon.__repr__ = lambda p: "Ply[#%d]" % len(p.exterior.coords)
+MultiPolygon.__repr__ = lambda p: "MltPly[#%d]" % len(p.geoms)

@@ -21,7 +21,7 @@ class PolygonalRegion:
 		self.polygon = Polygon(self._coordsList) if polygon is None else polygon
 		self.BOUNDARY_COLOR = boundaryColor
 		self.BACKGROUND_COLOR = backgroundColor
-		self.edges = self._buildEdges(self._coordsList)
+		self.edges = self._buildEdges()
 		self.canvasId = None
 		self.textId = None
 
@@ -34,17 +34,13 @@ class PolygonalRegion:
 			d[Geometry.pointStringId(c[0], c[1])] = Point(c[0], c[1])
 		return d
 
-	def _buildEdges(self, coords) -> Dict[str, LineString]:
+	def _buildEdges(self) -> Dict[str, LineString]:
 		d = {}
-		for i in range(len(coords) - 1):
-			c1 = coords[i]
-			c2 = coords[i + 1]
-			edgeCoords = [(c1[0], c1[1]), (c2[0], c2[1])]
-			d[Geometry.coordListStringId(edgeCoords)] = LineString(edgeCoords)
-		c1 = coords[len(coords) - 1]
-		c2 = coords[0]
-		edgeCoords = [(c1[0], c1[1]), (c2[0], c2[1])]
-		d[Geometry.coordListStringId(edgeCoords)] = LineString(edgeCoords)
+		verts = list(self.polygon.exterior.coords)
+		for v1, v2 in zip(verts, verts[1:]):
+			edgeCoords = [v1, v2]
+			edge = LineString(edgeCoords)
+			d[Geometry.coordListStringId(edgeCoords)] = edge
 		return d
 
 	def _hasEdgeByXy(self, x1, y1, x2, y2):

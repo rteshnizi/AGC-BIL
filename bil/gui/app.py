@@ -46,6 +46,7 @@ class App(tk.Frame):
 		}
 		self.createButtons()
 		self.createDebugOptions()
+		self.chained = None
 		self.canvas = Canvas(master=self.frame, app=self, row=2, col=0)
 		# Origin
 		self._renderMap()
@@ -168,33 +169,24 @@ class App(tk.Frame):
 		self._changeFov(False)
 
 	def chainGraphs(self):
-		if self._fovIndex == self._maxFovIndex:
-			previousIndex = self._fovIndex - 1
-			nextIndex = self._fovIndex
+		if self.chained is None:
+			if self._fovIndex == self._maxFovIndex:
+				previousIndex = self._fovIndex - 1
+				nextIndex = self._fovIndex
+			else:
+				previousIndex = self._fovIndex
+				nextIndex = self._fovIndex + 1
+			g1 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(previousIndex).fov, self.spec.validators)
+			g2 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(nextIndex).fov, self.spec.validators)
+			self.chained = TimedGraph([g1, g2])
 		else:
-			previousIndex = self._fovIndex
-			nextIndex = self._fovIndex + 1
-		g1 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(previousIndex).fov, self.spec.validators)
-		g2 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(nextIndex).fov, self.spec.validators)
-		chained = TimedGraph([g1, g2])
-		# [Drawing.CreateLine(self.canvas.tkCanvas, poly.coords, "RED", "", 1) for poly in chained.red]
-		[Drawing.CreateLine(self.canvas.tkCanvas, poly.coords, "PURPLE", "", 2) for poly in chained.drawLine]
-		[Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "RED", "", 1, "RED") for poly in chained.red]
-		[Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "BLUE", "", 1, "BLUE") for poly in chained.blue]
-		# c1 = chained.blue[0].exterior.coords[1]
-		# cp1 = chained.blue[-1].exterior.coords[1]
-		# c2 = chained.blue[0].exterior.coords[2]
-		# cp2 = chained.blue[-1].exterior.coords[2]
-		# c1Mid = Geometry.midpoint(c1, cp1)
-		# c2Mid = Geometry.midpoint(c2, cp2)
-		# orthogonal1 = Geometry.orthogonal(c1, cp1)
-		# orthogonal2 = Geometry.orthogonal(c2, cp2)
-		# c1MidP = (c1Mid[0] + (10 * orthogonal1[0]), c1Mid[1] + (10 * orthogonal1[1]))
-		# Drawing.CreateLine(self.canvas.tkCanvas, [c1Mid, c1MidP], "RED", "", 1)
-		# c2MidP = (c2Mid[0] + (10 * orthogonal2[0]), c2Mid[1] + (10 * orthogonal2[1]))
-		# Drawing.CreateLine(self.canvas.tkCanvas, [c2Mid, c2MidP], "BLUE", "", 1)
-		# Drawing.CreateLine(self.canvas.tkCanvas, [c1, c1Mid, cp1], "GREEN", "", 1)
-		# GraphAlgorithms.displayGraphAuto(chained, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
+			for id in self.lineIds: Drawing.RemoveShape(self.canvas.tkCanvas, id)
+			for id in self.redPolyIds: Drawing.RemoveShape(self.canvas.tkCanvas, id)
+			for id in self.bluePolyIds: Drawing.RemoveShape(self.canvas.tkCanvas, id)
+			self.chained._findEventIntervalsForShards()
+		self.lineIds = [Drawing.CreateLine(self.canvas.tkCanvas, poly.coords, "PURPLE", "", 2) for poly in self.chained.drawLine]
+		self.redPolyIds = [Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "RED", "", 1, "RED") for poly in self.chained.red]
+		self.bluePolyIds = [Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "BLUE", "", 1, "BLUE") for poly in self.chained.blue]
 
 	def chainAll(self):
 		GraphAlgorithms.displayGraphAuto(self.bil.fieldOfView.chainedGraphThroughTime(self.spec), displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
