@@ -5,4 +5,4 @@ class Canvas(object):
 		self.master = master
 		self.app = app
 		self.tkCanvas = tk.Canvas(master=master)
-		self.tkCanvas.grid(row=row, column=col, columnspan=7, sticky=tk.N + tk.S + tk.E + tk.W)
+		self.tkCanvas.grid(row=row, column=col, columnspan=9, sticky=tk.N + tk.S + tk.E + tk.W)

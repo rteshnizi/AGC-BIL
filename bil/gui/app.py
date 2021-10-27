@@ -31,6 +31,9 @@ class App(tk.Frame):
 		super().__init__(self.master)
 		self.fovLabel = tk.StringVar(master=self.master)
 		self._fovIndex = 0
+		self.eventLabel = tk.StringVar(master=self.master)
+		self._eventIndex = 0
+		self._eventDrawingId = []
 		self.fovLabel.set(self._fovLabelText)
 		self.validationBtnLabel = tk.StringVar(master=self.master)
 		self._validationIndex = 0
@@ -43,12 +46,12 @@ class App(tk.Frame):
 			"Display Geom Graph": tk.IntVar(master=self.master, value=0),
 			"Display Spring Graph": tk.IntVar(master=self.master, value=1),
 			"Show FOV": tk.IntVar(master=self.master, value=0),
+			"Show Event": tk.IntVar(master=self.master, value=0),
 		}
 		self.createButtons()
 		self.createDebugOptions()
 		self.chained = None
 		self.canvas = Canvas(master=self.frame, app=self, row=2, col=0)
-		# Origin
 		self._renderMap()
 		self._renderTrajectories()
 		self._renderSpec()
@@ -97,26 +100,75 @@ class App(tk.Frame):
 		self._clearTrajectories(force)
 		self._renderTrajectories(force)
 
-	def _toggleFov(self):
-		self._clearFOV()
-		self._toggleTrajectory(force=True)
-		self._renderFOV()
+	@property
+	def _maxEventIndex(self):
+		if self.chained is None: return 0
+		return len(self.chained.eventCandidates) - 1
 
-	def _clearFOV(self):
+	@property
+	def _eventLabelText(self):
+		if self.chained is None: return "N/A"
+		return "0 ≤ Ev %d ≤ %d" % (self._eventIndex, self._maxEventIndex)
+
+	def _toggleEvents(self):
+		self._clearEvents()
+		self._renderEvents()
+
+	def _clearEvents(self, force=False):
+		if self.chained is None: return
+		if len(self._eventDrawingId) == 0: return
+		if not force and self._dbg["Show Event"].get() == 1: return
+		[Drawing.RemoveShape(self.canvas.tkCanvas, id) for id in self._eventDrawingId]
+		self._eventDrawingId = []
+
+	def _renderEvents(self):
+		if self.chained is None: return
+		self.eventLabel.set(self._eventLabelText)
+		color = "RED" if self.chained.eventCandidates[self._eventIndex][2] == "ingoing" else "BLUE"
+		self._eventDrawingId = [
+			Drawing.CreatePolygon(self.canvas.tkCanvas, self.chained.eventCandidates[self._eventIndex][0].exterior.coords, color, "", 1, color),
+			Drawing.CreateLine(self.canvas.tkCanvas, self.chained.eventCandidates[self._eventIndex][3].coords, "PURPLE", "", 2)
+		]
+
+	def _changeEvent(self, showNext: bool):
+		self._clearEvents(force=True)
+		self._eventIndex += 1 if showNext else -1
+		self._eventIndex = min(self._maxEventIndex, self._eventIndex)
+		self._eventIndex = max(0, self._eventIndex)
+		self._renderEvents()
+
+	def _nextEvent(self):
+		self._changeEvent(True)
+
+	def _prevEvent(self):
+		self._changeEvent(False)
+
+	def _toggleFov(self):
+		self._clearFov()
+		self._toggleTrajectory(force=True)
+		self._renderFov()
+
+	def _clearFov(self):
 		self.fovRenderer.clearRender(self.canvas.tkCanvas)
 
-	def _renderFOV(self):
+	def _renderFov(self):
 		if not self.shouldShowFOV: return
 		self.fovRenderer.render(self.bil.map, self.observationToRender.fov, self.spec.validators, self.canvas.tkCanvas)
 
 	def _changeFov(self, showNext: bool):
-		self._clearFOV()
+		self._clearFov()
 		self._fovIndex += 1 if showNext else -1
 		self._fovIndex = min(self._maxFovIndex, self._fovIndex)
 		self._fovIndex = max(0, self._fovIndex)
 		self.fovLabel.set(self._fovLabelText)
 		self._toggleTrajectory(force=True)
-		self._renderFOV()
+		self._renderFov()
+
+	def _nextFov(self):
+		self._changeFov(True)
+
+	def _prevFov(self):
+		self._changeFov(False)
 
 	def _onSpecChange(self, event):
 		self._clearSpec()
@@ -162,31 +214,18 @@ class App(tk.Frame):
 		graph = ConnectivityGraph(self.bil.map, self.observationToRender.fov, self.spec.validators)
 		graph.displayGraph(displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
-	def nextFOV(self):
-		self._changeFov(True)
-
-	def prevFOV(self):
-		self._changeFov(False)
-
 	def chainGraphs(self):
-		if self.chained is None:
-			if self._fovIndex == self._maxFovIndex:
-				previousIndex = self._fovIndex - 1
-				nextIndex = self._fovIndex
-			else:
-				previousIndex = self._fovIndex
-				nextIndex = self._fovIndex + 1
-			g1 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(previousIndex).fov, self.spec.validators)
-			g2 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(nextIndex).fov, self.spec.validators)
-			self.chained = TimedGraph([g1, g2])
+		if self._fovIndex == self._maxFovIndex:
+			previousIndex = self._fovIndex - 1
+			nextIndex = self._fovIndex
 		else:
-			for id in self.lineIds: Drawing.RemoveShape(self.canvas.tkCanvas, id)
-			for id in self.redPolyIds: Drawing.RemoveShape(self.canvas.tkCanvas, id)
-			for id in self.bluePolyIds: Drawing.RemoveShape(self.canvas.tkCanvas, id)
-			self.chained._findEventIntervalsForShards()
-		self.lineIds = [Drawing.CreateLine(self.canvas.tkCanvas, poly.coords, "PURPLE", "", 2) for poly in self.chained.drawLine]
-		self.redPolyIds = [Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "RED", "", 1, "RED") for poly in self.chained.red]
-		self.bluePolyIds = [Drawing.CreatePolygon(self.canvas.tkCanvas, poly.exterior.coords, "BLUE", "", 1, "BLUE") for poly in self.chained.blue]
+			previousIndex = self._fovIndex
+			nextIndex = self._fovIndex + 1
+		g1 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(previousIndex).fov, self.spec.validators)
+		g2 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(nextIndex).fov, self.spec.validators)
+		self.chained = TimedGraph([g1, g2])
+		# [Drawing.CreatePolygon(self.canvas.tkCanvas, p.exterior.coords, "RED", "", 1, "RED") for p in self.chained.red]
+		# [Drawing.CreateLine(self.canvas.tkCanvas, l.coords, "PURPLE", "", 2) for l in self.chained.drawLine]
 
 	def chainAll(self):
 		GraphAlgorithms.displayGraphAuto(self.bil.fieldOfView.chainedGraphThroughTime(self.spec), displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
@@ -206,10 +245,9 @@ class App(tk.Frame):
 		row = 0
 		column = 0
 
-		self._createButton(row, column, "Next FOV", self.nextFOV)
+		self._createButton(row, column, "Next FOV", self._nextFov)
 		column += 1
-
-		self._createButton(row, column, "Prev FOV", self.prevFOV)
+		self._createButton(row, column, "Prev FOV", self._prevFov)
 		column += 1
 
 		self._createButton(row, column, "Dispaly G", self.showGraph)
@@ -230,6 +268,11 @@ class App(tk.Frame):
 		self._createButton(row, column, "Spec Graph", self.showSpecGraph)
 		column += 1
 
+		self._createButton(row, column, "Next Event", self._nextEvent)
+		column += 1
+		self._createButton(row, column, "Prev Event", self._prevEvent)
+		column += 1
+
 	def createDebugOptions(self):
 		tk.Grid.columnconfigure(self.frame, 0, weight=1)
 		label = tk.Label(master=self.frame, textvariable=self.fovLabel)
@@ -245,10 +288,22 @@ class App(tk.Frame):
 			checkbox = tk.Checkbutton(master=self.frame, text=text, variable=variable)
 			if text == "Show FOV":
 				checkbox["command"] = self._toggleFov
-			if text == "Render Trajectory":
+				checkbox.grid(row=1, column=column)
+			elif text == "Render Trajectory":
 				checkbox["command"] = self._toggleTrajectory
-			checkbox.grid(row=1, column=column)
+				checkbox.grid(row=1, column=column)
+			elif text == "Show Event":
+				checkbox["command"] = self._toggleEvents
+				checkbox.grid(row=1, column=column)
+			else:
+				checkbox.grid(row=1, column=column)
 			column += 1
+
+		tk.Grid.columnconfigure(self.frame, 0, weight=1)
+		label = tk.Label(master=self.frame, textvariable=self.eventLabel)
+		label.grid(row=1, column=column)
+		column += 1
+
 
 	def condenseGraph(self):
 		graph = ConnectivityGraph(self.bil.map, self.observationToRender.fov, self.spec.validators)
@@ -256,10 +311,10 @@ class App(tk.Frame):
 		GraphAlgorithms.displayGraphAuto(condensed, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
 
 	def validate(self):
-		self._clearFOV()
+		self._clearFov()
 		self._dbg["Show FOV"].set(1)
 		self._fovIndex = self._validationIndex - 1
-		self.nextFOV()
+		self._nextFov()
 		self._validateCallback(self.observationToValidate)
 		self._validationIndex += 1
 		self.validationBtnLabel.set(self._validationBtnLabelText)

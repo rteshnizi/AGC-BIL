@@ -22,13 +22,14 @@ class TimedGraph(nx.DiGraph):
 		self._beamNodes = []
 		self._beamSet = set()
 		self._boundary = None
+		# TODO: DEBUGGING
 		self.red = []
 		self.blue = []
 		self.drawLine = []
-		# TODO: DEBUGGING
-		self.shardIntervals = None
+		self.collisionIntervals = None
 		self.ingoingIntervals = []
 		self.outgoingIntervals = []
+		self.eventCandidates = []
 
 		print("Connecting Graphs through time...")
 		self._fig = None
@@ -135,14 +136,30 @@ class TimedGraph(nx.DiGraph):
 		if interval2[1] <= interval1[0]: return False
 		return True
 
+	def _edgesHaveACommonVertex(self, l1: LineString, l2: LineString):
+		l1Verts = l1.coords
+		l2Verts = l2.coords
+		for v1 in l1Verts:
+			for v2 in l2Verts:
+				if Geometry.coordsAreAlmostEqual(v1, v2): return True
+		return False
+
 	def _splitIntervalsListForOverlap(self, intervals: List[Tuple[LineString, LineString, float, float]]) -> Tuple[List[Tuple[LineString, LineString, float, float]], List[Tuple[LineString, LineString, float, float]]]:
 		haveOverlap = []
 		dontHaveOverlap = []
-		for interval1 in intervals:
+		while len(intervals) > 0:
+			interval1 = intervals.pop()
 			foundOverlap = False
 			for interval2 in intervals:
 				if interval1 == interval2: continue
 				if self._checkIntervalsForOverlap(interval1[2:], interval2[2:]):
+					if interval1[0] == interval2[0]:
+						# If the sensor edges are the same
+						if self._edgesHaveACommonVertex(interval1[1], interval2[1]):
+							# AND if the map edges are consecutive,
+							# the sensor edge is going to collide both edges at the common vertex.
+							# So we can safely remove one of them from the overlap
+							continue
 					foundOverlap = True
 					haveOverlap.append(interval1)
 					break
@@ -173,7 +190,7 @@ class TimedGraph(nx.DiGraph):
 		expandedObb = expandedObb.convex_hull
 		return expandedObb
 
-	def _findShards(self, sensor: SensingRegion, transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords, envMap: Map) -> Dict[str, Set[LineString]]:
+	def _findColissionsWithExtendedBb(self, sensor: SensingRegion, transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords, envMap: Map) -> Dict[str, Set[LineString]]:
 		"""
 			#### Returns
 				For each edge of the sensor, it returns all the edges of the map that intersect the expanded bounding box of that edge
@@ -181,12 +198,19 @@ class TimedGraph(nx.DiGraph):
 		collisionData = {}
 		angle = abs(transformation.rotation)
 		for sensorEdgeId in sensor.edges:
+			collisionData[sensorEdgeId] = []
 			edge = sensor.edges[sensorEdgeId]
 			boundingBox = self._getLineSegmentExpandedBb(transformation, edge, angle, centerOfRotation)
-			collisionData[sensorEdgeId] = Geometry.getAllIntersectingEdgesWithPolygon(boundingBox, envMap.polygon)
+			mapBoundaryVerts = envMap.polygon.exterior.coords
+			for v1, v2 in zip(mapBoundaryVerts, mapBoundaryVerts[1:]):
+				mapEdge = LineString([v1, v2])
+				if boundingBox.intersects(mapEdge): collisionData[sensorEdgeId].append(mapEdge)
 		return collisionData
 
 	def _initEdgeIntervals(self, sensor: SensingRegion, transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords, collisionData: Dict[str, Set[LineString]], inverse: bool):
+		"""
+			Initialize intervals for edges that are currently collising with the sensor.
+		"""
 		intervals = []
 		intStart = 1 if inverse else 0
 		intEnd = 0 if inverse else 1
@@ -200,20 +224,20 @@ class TimedGraph(nx.DiGraph):
 				intervals.append((sensorEdge, mapEdge, 0, 1))
 		return intervals
 
-	def _initShardIntervals(self, sensor: SensingRegion, collisionData: Dict[str, Set[LineString]]):
+	def _initColissionIntervals(self, sensor: SensingRegion, collisionData: Dict[str, Set[LineString]]):
 		intervals = []
-		for previousSensorEdgeId in collisionData:
-			sensorEdge = sensor.edges[previousSensorEdgeId]
-			mapEdges = collisionData[previousSensorEdgeId]
+		for sensorEdgeId in collisionData:
+			sensorEdge = sensor.edges[sensorEdgeId]
+			mapEdges = collisionData[sensorEdgeId]
 			if (len(mapEdges) == 0): continue
 			for mapEdge in mapEdges:
 				intervals.append((sensorEdge, mapEdge, 0, 1))
 		return intervals
 
-	def _findEventIntervalsForShards(self):
+	def _findEventIntervalsForCollisions(self):
 		i = 0
-		while i < len(self.shardIntervals):
-			(sensorEdge, mapEdge, intervalStart, intervalEnd) = self.shardIntervals.pop(i)
+		while i < len(self.collisionIntervals):
+			(sensorEdge, mapEdge, intervalStart, intervalEnd) = self.collisionIntervals.pop(i)
 			# Epsilon for shard search
 			deltaT = intervalEnd - intervalStart
 			if deltaT <= self.MIN_TIME_DELTA:
@@ -232,14 +256,14 @@ class TimedGraph(nx.DiGraph):
 					self.ingoingIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
 			if isCollidingAtStart == isCollidingAtMid and isCollidingAtMid == isCollidingAtEnd:
 				if firstHalfBb.intersects(mapEdge):
-					self.shardIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+					self.collisionIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
 					i += 1
 				if secondHalfBb.intersects(mapEdge):
-					self.shardIntervals.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
+					self.collisionIntervals.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
 					i += 1
 		return
 
-	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, envMap: Map) -> List[Polygon]:
+	def _populateIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, envMap: Map) -> List[Polygon]:
 		"""
 			Given the original configuration of the FOV (`previousSensor`) and the final configuration (`currentSensor`)
 			find all the times where there is a shadow component event.
@@ -253,16 +277,18 @@ class TimedGraph(nx.DiGraph):
 		self.transformation = Geometry.getAffineTransformation(previousSensor.polygon, currentSensor.polygon, self.centerOfRotation)
 		previousCollidingEdges = self._getCollidingEdgesByEdge(previousSensor, envMap)
 		currentCollidingEdges = self._getCollidingEdgesByEdge(currentSensor, envMap)
-		shards = self._findShards(previousSensor, self.transformation, self.centerOfRotation, envMap)
+		intermediateCollisions = self._findColissionsWithExtendedBb(previousSensor, self.transformation, self.centerOfRotation, envMap)
 		# Remove the edges that we are sure are intersecting
 		for id in previousCollidingEdges:
 			for l in previousCollidingEdges[id]:
-				shards[id].remove(l)
-		self.shardIntervals = self._initShardIntervals(previousSensor, shards)
+				if id in intermediateCollisions: intermediateCollisions[id].remove(l)
+		for id in currentCollidingEdges:
+			for l in currentCollidingEdges[id]:
+				if id in intermediateCollisions: intermediateCollisions[id].remove(l)
+		self.collisionIntervals = self._initColissionIntervals(previousSensor, intermediateCollisions)
 
-		while len(self.shardIntervals) > 0:
-			self._findEventIntervalsForShards()
-
+		while len(self.collisionIntervals) > 0:
+			self._findEventIntervalsForCollisions()
 		# Each interval is represented as a tuple: (sensorEdge, mapEdge, float, float)
 		# The first float is the interval start and the second one is interval end times.
 		intervals = self._initEdgeIntervals(previousSensor, self.transformation, self.centerOfRotation, previousCollidingEdges, inverse=False)
@@ -284,8 +310,8 @@ class TimedGraph(nx.DiGraph):
 			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
 			for interval in dontHaveOverlap:
 				intermediateTransform = Geometry.getParameterizedAffineTransformation(self.transformation, interval[3])
-				self.blue.append(Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, self.centerOfRotation))
-
+				p = Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, self.centerOfRotation)
+				self.eventCandidates.append((p, interval[3], "outgoing", interval[1]))
 		intervals = self._initEdgeIntervals(currentSensor, self.transformation, self.centerOfRotation, currentCollidingEdges, inverse=True)
 		haveOverlap = intervals + self.ingoingIntervals
 		dontHaveOverlap = []
@@ -305,7 +331,9 @@ class TimedGraph(nx.DiGraph):
 			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
 			for interval in dontHaveOverlap:
 				intermediateTransform = Geometry.getParameterizedAffineTransformation(self.transformation, interval[3])
-				self.red.append(Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, self.centerOfRotation))
+				p = Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, self.centerOfRotation)
+				self.eventCandidates.append((p, interval[3], "ingoing", interval[1]))
+		self.eventCandidates.sort(key=lambda e: e[1])
 		return []
 
 	def _build(self, graphs: List[ConnectivityGraph], startInd = 0, endInd = None):
@@ -318,7 +346,7 @@ class TimedGraph(nx.DiGraph):
 			currentLayer = graphs[i]
 			if previousLayer is not None:
 				for sensorId in previousLayer.fov.sensors:
-					self._findIntermediateComponentEvents(
+					self._populateIntermediateComponentEvents(
 						previousLayer.fov.sensors[sensorId].region,
 						currentLayer.fov.getEquivalentSensorById(sensorId).region,
 						previousLayer.map)
