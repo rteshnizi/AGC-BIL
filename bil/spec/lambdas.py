@@ -51,7 +51,7 @@ class Prototypes:
 		)
 		Prototypes.TWIST = ObjectLiteral(
 			A = Lambda(Prototypes.funcP2A, [[10, 75], [20, 75], [20, 65], [10, 65]], LambdaType.Region),
-			B = Lambda(Prototypes.funcP2B, [[145, 25], [135, 25], [135, 15], [145, 15]], LambdaType.Region),
+			B = Lambda(Prototypes.funcP2B, [[145, 15], [140, 15], [140, 10], [145, 10]], LambdaType.Region),
 			T0 = Lambda(Prototypes.funcP2T0, 10, LambdaType.Time)
 		)
 

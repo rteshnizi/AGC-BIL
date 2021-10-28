@@ -31,7 +31,8 @@ class Validator(object):
 		self._lambdaString = lambdaStr
 		# for Region, value is a polygonalRegion
 		if self.isRegion:
-			self.value = PolygonalRegion("sym-%s" % self.name, list(zip(*self.lambdaObj.spaceTimeSet.polygon.exterior.coords.xy)), "BLUE")
+			coords = list(zip(*self.lambdaObj.spaceTimeSet.polygon.exterior.coords.xy))
+			self.value = PolygonalRegion("sym-%s" % self.name, coords, "BLUE")
 		else:
 			# TODO: Time executioner
 			pass

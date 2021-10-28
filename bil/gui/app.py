@@ -103,7 +103,10 @@ class App(tk.Frame):
 	@property
 	def _maxEventIndex(self):
 		if self.chained is None: return 0
-		return len(self.chained.eventCandidates) - 1
+		l = 0
+		for eventCandidates in self.chained.eventsByLayer:
+			l += len(eventCandidates)
+		return l
 
 	@property
 	def _eventLabelText(self):
