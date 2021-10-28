@@ -127,7 +127,7 @@ class Drawing:
 		fontSize: number; default is 10
 		"""
 		coords = Drawing._translateCoords(coords)
-		shape = canvas.create_text(coords[0], coords[1], text=text, fill=color, font="Times %d" % fontSize, tag=tag)
+		shape = canvas.create_text(coords[0], coords[1], text=text, fill=color, font="Consolas %d" % fontSize, tag=tag)
 		# Drawing.bindMouseEvent(canvas, shape)
 		return shape
 

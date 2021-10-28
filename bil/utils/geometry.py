@@ -156,6 +156,10 @@ class Geometry:
 		return tuple(Geometry.pointStringId(coord[0], coord[1]) for coord in coords)
 
 	@staticmethod
+	def getPolygonCoords(p: Polygon) -> CoordsList:
+		return list(zip(*(p.exterior.coords.xy)))
+
+	@staticmethod
 	def lineAndPolygonIntersect(l: LineString, p: Polygon) -> bool:
 		# TODO: A line seg might touch but not intersect
 		return l.intersects(p)
@@ -424,5 +428,5 @@ class Geometry:
 Point.__repr__ = lambda p: "P%s" % repr((p.x, p.y))
 LinearRing.__repr__ = lambda l: "LR[#%d]" % len(l.coords)
 LineString.__repr__ = lambda l: "LS[#%d]" % len(l.coords) if len(l.coords) > 2 else "LS%s" % repr(l.bounds)
-Polygon.__repr__ = lambda p: "Ply[#%d]" % len(p.exterior.coords)
-MultiPolygon.__repr__ = lambda p: "MltPly[#%d]" % len(p.geoms)
+Polygon.__repr__ = lambda p: "Pl[%dv]" % (len(p.exterior.coords) - 1)
+MultiPolygon.__repr__ = lambda ps: "MP{%s}" % ", ".join([repr(p) for p in ps])

@@ -35,7 +35,7 @@ class Specification(object):
 	def render(self, canvas):
 		for symName in self._regionSymbols:
 			region = self.validators[symName].value
-			region.render(canvas)
+			region.render(canvas, renderText=True)
 
 	def clearRender(self, canvas):
 		for symName in self._regionSymbols:

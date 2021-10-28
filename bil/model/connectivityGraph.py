@@ -1,6 +1,7 @@
+import re
 import networkx as nx
 from shapely.geometry import LineString, Point, Polygon, MultiPolygon
-from typing import List, Set, Dict
+from typing import List, Set, Dict, Union
 
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.sensingRegion import SensingRegion
@@ -29,17 +30,15 @@ class NodeCluster:
 class ConnectivityGraph(nx.DiGraph):
 	def __init__(self, envMap: Map, fov: FOV, validators):
 		super().__init__()
-		self._regionNodes = []
-		self._beamNodes = []
-		self._beamSet = set()
 		self.fov = fov
 		self.validators = validators
-		self._fovComponentRegions: List[SensingRegion] = []
+		self.shadows: List[str] = []
+		self.fovComponents: List[str] = []
 		self.map: Map = envMap
 		self.timestamp = fov.time
 		self._disjointPolys: List[PolygonalRegion] = []
 		print("Building graph for %s" % self.timestamp)
-		self._buildFromMap(fov)
+		self._build(fov)
 		self._fig = None
 		self._condensed = None
 		self.nodeClusters: Dict[str, NodeCluster] = {}
@@ -154,6 +153,10 @@ class ConnectivityGraph(nx.DiGraph):
 		self.add_node(nodeName)
 		self.nodes[nodeName]["timestamp"] = self.timestamp
 
+	def _addEdges(self, fromStr, toStr):
+		self.add_edge(fromStr, toStr)
+		self.add_edge(toStr, fromStr)
+
 	def _addRegion(self, polygonalRegion):
 		name = polygonalRegion.name
 		self._addNode(name)
@@ -172,14 +175,14 @@ class ConnectivityGraph(nx.DiGraph):
 	def _addSingleSensorRegionConnectedComponent(self, connectedComponent, index):
 		name = "FOV-%d" % index
 		region = SensingRegion(name, [], self.timestamp, index, polygon=connectedComponent)
+		self.fovComponents.append(name)
 		self._addNode(name)
 		self.nodes[name]["region"] = region
 		self.nodes[name]["centroid"] = region.polygon.centroid
 		self.nodes[name]["type"] = "sensor"
-		self._regionNodes.append(name)
-		self._fovComponentRegions.append(region)
+		return
 
-	def _addSensorRegionConnectedComponents(self, fovUnion):
+	def _addSensorRegionConnectedComponents(self, fovUnion: Union[Polygon, MultiPolygon]):
 		if isinstance(fovUnion, MultiPolygon):
 			i = 0
 			for connectedComponent in fovUnion:
@@ -187,6 +190,57 @@ class ConnectivityGraph(nx.DiGraph):
 				i += 1
 		else:
 			self._addSingleSensorRegionConnectedComponent(fovUnion, 0)
+		return
+
+	def _createNewShadow(self, shadow: Polygon):
+		name = "S-%d" % len(self.shadows)
+		region = ShadowRegion(name, Geometry.getPolygonCoords(shadow))
+		self.shadows.append(name)
+		self._addNode(name)
+		self.nodes[name]["region"] = region
+		self.nodes[name]["centroid"] = region.polygon.centroid
+		self.nodes[name]["type"] = "shadow"
+		for fovName in self.fovComponents:
+			fovComponent = self.nodes[fovName]["region"]
+			if Geometry.haveOverlappingEdge(fovComponent.polygon, region.polygon):
+				self._addEdges(fovName, name)
+		return
+
+	def _mergeShadow(self, existingShadow: ShadowRegion, shadow: Polygon):
+		p = Geometry.union([existingShadow.polygon, shadow])
+		region = ShadowRegion(existingShadow.name, Geometry.getPolygonCoords(p))
+		self.nodes[existingShadow.name]["region"] = region
+		self.nodes[existingShadow.name]["centroid"] = region.polygon.centroid
+		return
+
+	def _updateShadows(self, newShadow: Polygon):
+		if len(self.shadows) == 0:
+			self._createNewShadow(newShadow)
+		else:
+			beforeUpdate = self.shadows.copy()
+			for existingShadowName in beforeUpdate:
+				existingShadow = self.nodes[existingShadowName]["region"]
+				if Geometry.haveOverlappingEdge(existingShadow.polygon, newShadow):
+					self._mergeShadow(existingShadow, newShadow)
+				else:
+					self._createNewShadow(newShadow)
+		return
+
+	def _constructShadows(self, fovUnion: Union[Polygon, MultiPolygon]):
+		allShadowPolygons = []
+		for regionName in self.map.regions:
+			mapR = self.map.regions[regionName]
+			if Geometry.polygonAndPolygonIntersect(mapR.polygon, fovUnion):
+				shadows = Geometry.shadows(mapR.polygon, fovUnion)
+				shadows = [p for p in shadows if p.length > 0]
+				shadows = list(filter(lambda p: not isinstance(p, LineString), shadows))
+				allShadowPolygons = allShadowPolygons + shadows
+			else:
+				allShadowPolygons.append(mapR.polygon)
+		mergedPolys = Geometry.union(allShadowPolygons)
+		for shadow in mergedPolys:
+			self._updateShadows(shadow)
+		return
 
 	def _isValidatorPolygon(self, polygonName):
 		"""
@@ -194,67 +248,12 @@ class ConnectivityGraph(nx.DiGraph):
 		"""
 		return polygonName.startswith("sym-")
 
-	def _buildFromMap(self, fov):
+	def _build(self, fov):
 		# First we create all the nodes with respect to FOV
 		fovUnion = fov.polygon
 		self._addSensorRegionConnectedComponents(fovUnion)
-		for regionName in self.map.regions:
-			mapR = self.map.regions[regionName]
-			if Geometry.polygonAndPolygonIntersect(mapR.polygon, fovUnion):
-				insidePolys = Geometry.intersect(mapR.polygon, fovUnion)
-				insidePolys = [p for p in insidePolys if p.length > 0]
-				insidePolys = list(filter(lambda p: not isinstance(p, LineString), insidePolys))
-				shadows = Geometry.shadows(mapR.polygon, fovUnion)
-				shadows = [p for p in shadows if p.length > 0]
-				shadows = list(filter(lambda p: not isinstance(p, LineString), shadows))
-				self._disjointPolys += [PolygonalRegion("%s-%d" % (mapR.name, i), [], polygon=insidePolys[i]) for i in range(len(insidePolys))]
-				self._disjointPolys += [ShadowRegion("%s-%d" % (mapR.name, i + len(insidePolys)), [], polygon=shadows[i]) for i in range(len(shadows))]
-			else:
-				self._disjointPolys.append(ShadowRegion("%s" % (mapR.name), list(zip(*(mapR.polygon.exterior.coords.xy)))))
-
-		# Then we add the edges
-		for p1 in self._disjointPolys:
-			if not isinstance(p1, ShadowRegion): continue
-			if self._getMapRegion(p1.name).isObstacle: continue
-			self._addRegion(p1)
-			for fovRegion in self._fovComponentRegions:
-				e = Geometry.haveOverlappingEdge(p1.polygon, fovRegion.polygon)
-				if e: self._addBeamNodes(p1.name, fovRegion.name)
-			for p2 in self._disjointPolys:
-				if p1 == p2: continue
-				if not isinstance(p2, ShadowRegion): continue
-				if self._getMapRegion(p2.name).isObstacle: continue
-				e = Geometry.haveOverlappingEdge(p1.polygon, p2.polygon)
-				if e: self.add_edge(p1.name, p2.name)
-
-		# Last we add the nodes for the validators
-		for validatorName in self.validators:
-			validator = self.validators[validatorName]
-			if not validator.isRegion: continue
-			validatorRegion = validator.value
-			j = 0
-			for fovRegion in self._fovComponentRegions:
-				if not Geometry.polygonAndPolygonIntersect(validatorRegion.polygon, fovRegion.polygon): continue
-				insidePolys = Geometry.intersect(validatorRegion.polygon, fovRegion.polygon)
-				insidePolys = [p for p in insidePolys if p.length > 0]
-				insidePolys = list(filter(lambda p: not isinstance(p, LineString), insidePolys))
-				for i in range(len(insidePolys)):
-					validatorPoly = PolygonalRegion("%s-%d" % (validatorRegion.name, i + j), list(zip(*(insidePolys[i].exterior.coords.xy))))
-					self._addRegion(validatorPoly)
-					# If this is a non-shadow, connect it to the FOV instead of the polygon name
-					self._addBeamNodes(validatorPoly.name, fovRegion.name)
-				j += len(insidePolys)
-			for polygonalRegion in self._disjointPolys:
-				if not isinstance(polygonalRegion, ShadowRegion): continue
-				if not Geometry.polygonAndPolygonIntersect(validatorRegion.polygon, polygonalRegion.polygon): continue
-				insidePolys = Geometry.intersect(validatorRegion.polygon, polygonalRegion.polygon)
-				insidePolys = [p for p in insidePolys if p.length > 0]
-				insidePolys = list(filter(lambda p: not isinstance(p, LineString), insidePolys))
-				for i in range(len(insidePolys)):
-					validatorPoly = ShadowRegion("%s-%d" % (validatorRegion.name, i + j), list(zip(*(insidePolys[i].exterior.coords.xy))))
-					self._addRegion(validatorPoly)
-					self.add_edge(validatorPoly.name, polygonalRegion.name)
-				j += len(insidePolys)
+		self._constructShadows(fovUnion)
+		return
 
 	def getSensorReadings(self, startPose, endPose):
 		startPolygonName = None
@@ -288,9 +287,10 @@ class ConnectivityGraph(nx.DiGraph):
 
 	def displayGraph(self, displayGeomGraph, displaySpringGraph):
 		if displayGeomGraph:
-			self._fig = GraphAlgorithms.displayGeometricGraph(self, self._regionNodes, self._beamNodes)
+			return
 		else:
-			self._fig = GraphAlgorithms.displaySpringGraph(self, self._regionNodes, self._beamNodes)
+			self._fig = GraphAlgorithms.displaySpringGraph(self, self.fovComponents, self.shadows)
+		return
 
 	def killDisplayedGraph(self):
 		if self._fig:
