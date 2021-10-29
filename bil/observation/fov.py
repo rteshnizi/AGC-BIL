@@ -3,7 +3,7 @@ from typing import Dict
 from bil.observation.sensor import Sensor
 from bil.utils.geometry import Geometry
 
-class FOV:
+class Fov:
 	def __init__(self, sensors):
 		self._polygon = None
 		self.sensors: Dict[tuple, Sensor] = sensors

@@ -9,7 +9,7 @@ from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.sensingRegion import SensingRegion
 from bil.model.shadowRegion import ShadowRegion
 from bil.model.map import Map
-from bil.observation.fov import FOV
+from bil.observation.fov import Fov
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
 
@@ -30,7 +30,7 @@ class NodeCluster:
 		return self._polygon
 
 class ConnectivityGraph(nx.DiGraph):
-	def __init__(self, envMap: Map, fov: FOV, validators):
+	def __init__(self, envMap: Map, fov: Fov, validators):
 		super().__init__()
 		self._regionNodes = []
 		self._beamNodes = []

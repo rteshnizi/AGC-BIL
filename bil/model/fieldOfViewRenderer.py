@@ -17,7 +17,7 @@ class FieldOfViewRenderer:
 			sensor.region.render(canvas)
 		cGraph = None
 		if fov.time not in self._cGraphCache:
-			cGraph = ConnectivityGraph(envMap, fov, validators)
+			cGraph = ConnectivityGraph(envMap, fov.polygon, fov.time, validators)
 			self._cGraphCache[fov.time] = cGraph
 		else:
 			cGraph = self._cGraphCache[fov.time]

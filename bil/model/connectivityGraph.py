@@ -1,28 +1,28 @@
 import networkx as nx
 from shapely.geometry import LineString, Polygon, MultiPolygon
-from typing import List, Union
+from typing import Dict, List, Union
 
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.sensingRegion import SensingRegion
 from bil.model.shadowRegion import ShadowRegion
 from bil.model.map import Map
 from bil.model.validatorRegion import ValidatorRegion
-from bil.observation.fov import FOV
+from bil.observation.fov import Fov
+from bil.spec.validator import Validator
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
 
 class ConnectivityGraph(nx.DiGraph):
-	def __init__(self, envMap: Map, fov: FOV, validators):
+	def __init__(self, envMap: Map, fovUnion: Union[Polygon, MultiPolygon], timestamp: float, validators: Dict[str, Validator]):
 		super().__init__()
-		self.fov = fov
 		self.validators = validators
 		self.fovNodes: List[str] = []
 		self.shadowNodes: List[str] = []
 		self.symbolNodes: List[str] = []
 		self.map: Map = envMap
-		self.timestamp = fov.time
+		self.timestamp = timestamp
 		print("Building graph for %s" % self.timestamp)
-		self._build(fov)
+		self._build(fovUnion)
 		self._fig = None
 
 	def __repr__(self):
@@ -148,9 +148,7 @@ class ConnectivityGraph(nx.DiGraph):
 				if broken: continue
 		return
 
-	def _build(self, fov: Union[Polygon, MultiPolygon]):
-		# First we create all the nodes with respect to FOV
-		fovUnion = fov.polygon
+	def _build(self, fovUnion: Union[Polygon, MultiPolygon]):
 		self._addSensorRegionConnectedComponents(fovUnion)
 		self._constructShadows(fovUnion)
 		self._addSymbols(fovUnion)

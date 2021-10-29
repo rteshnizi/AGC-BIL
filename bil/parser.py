@@ -4,7 +4,7 @@ import json
 import os
 
 from bil.observation.observations import Observations, Observation
-from bil.observation.fov import FOV
+from bil.observation.fov import Fov
 from bil.observation.sensor import Sensor
 from bil.observation.track import Track
 from bil.model.featureMap import FeatureMap
@@ -125,7 +125,7 @@ class ObservationParser(Parser):
 				coords = [[xs[j], ys[j]] for j in range(len(xs))]
 				sensor = Sensor(idNum, rawObservation["t"], rawSensor["pose"][0], rawSensor["pose"][1], rawSensor["pose"][2], coords, envMap, featureMap)
 				sensors[(rawObservation["t"], idNum)] = sensor
-			fov = FOV(sensors)
+			fov = Fov(sensors)
 			if len(rawObservation["deletedTracks"]) > 0:
 				if lastTrack is None: print("Ignoring deleting Track %d. We can't delete a track before one exists." % rawObservation["deletedTracks"][0])
 				else: lastTrack.pose.vanished = True

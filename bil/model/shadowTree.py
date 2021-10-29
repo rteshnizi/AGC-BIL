@@ -7,33 +7,24 @@ from typing import List, Set, Dict, Tuple
 from math import inf
 
 from bil.model.connectivityGraph import ConnectivityGraph
+from bil.model.map import Map
+from bil.observation.fov import Fov
+from bil.spec.validator import Validator
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
-from bil.model.map import Map
 from bil.utils.priorityQ import PriorityQ
 
-class TimedGraph(nx.DiGraph):
-	def __init__(self, graphs: List[ConnectivityGraph], startInd = 0, endInd = None):
+class ShadowTree(nx.DiGraph):
+	def __init__(self, envMap: Map, fovs: List[Fov], validators: Dict[str, Validator], startInd = 0, endInd = None):
 		super().__init__()
 		self.MIN_TIME_DELTA = 1E-2
-		self._nodeLayers = []
-		self._eventsByLayer = []
-		self.nodeByLayers = []
-		self.eventsByLayer = []
-		self._timeStamps = []
-		self._regionNodes = []
-		self._beamNodes = []
-		self._beamSet = set()
-		self._boundary = None
-		# TODO: DEBUGGING
-		self.ingoingIntervals = []
-		self.outgoingIntervals = []
+		self._fig = None
 
 		print("Connecting Graphs through time...")
-		self._fig = None
-		self.nodeClusters: Dict[str, Set[str]] = {}
-		self.nodeToClusterMap: Dict[str, str] = {}
-		self._build(graphs, startInd, endInd)
+		self._build(envMap, fovs, validators, startInd, endInd)
+
+	def _generateTemporalName(self, name: str, time: float):
+		return "%s-%.2f" % (name, time)
 
 	def _getLowerAndUpperNode(self, n1, n2):
 		upper = n1 if self.nodes[n1]["timestamp"] > self.nodes[n2]["timestamp"] else n2
@@ -336,24 +327,34 @@ class TimedGraph(nx.DiGraph):
 		eventCandidates.sort(key=lambda e: e[1])
 		return eventCandidates
 
-	def _build(self, graphs: List[ConnectivityGraph], startInd = 0, endInd = None):
-		if endInd is None: endInd = len(graphs)
+	def _appendGraph(self, graph: ConnectivityGraph):
+		for node in graph.nodes:
+			temporalName = self._generateTemporalName(node, graph.timestamp)
+			self.add_node(temporalName)
+			GraphAlgorithms.cloneNodeProps(graph.nodes[node], self.nodes[temporalName])
+		for edge in graph.edges:
+			frm = self._generateTemporalName(edge[0], graph.timestamp)
+			to = self._generateTemporalName(edge[1], graph.timestamp)
+			self.add_edge(frm, to)
+		return
 
-		self.nodesByLayer = []
-		self.eventsByLayer = []
-		previousLayer = None
+	def _build(self, envMap: Map, fovs: List[Fov], validators: Dict[str, Validator], startInd = 0, endInd = None):
+		if endInd is None: endInd = len(fovs)
+
+		previousFov: Fov = None
+		currentConnectivityG: ConnectivityGraph = None
 		startTime = time.time()
+
 		for i in range(startInd, endInd):
-			currentLayer = graphs[i]
-			if previousLayer is None:
-				gDense: ConnectivityGraph = currentLayer.condense()
-				previousLayer = currentLayer
+			currentFov = fovs[i]
+			if previousFov is None:
+				currentConnectivityG = ConnectivityGraph(envMap, currentFov.polygon, currentFov.time, validators)
+				self._appendGraph(currentConnectivityG)
+				previousFov = currentFov
 			else:
-				for sensorId in previousLayer.fov.sensors:
-					self.eventsByLayer.append(self._findIntermediateComponentEvents(
-						previousLayer.fov.sensors[sensorId].region,
-						currentLayer.fovUnion.getEquivalentSensorById(sensorId).region,
-						previousLayer.map))
+				for sensorId in previousFov.sensors:
+					componentEvents = self._findIntermediateComponentEvents(previousFov.sensors[sensorId].region, currentFov.getEquivalentSensorById(sensorId).region, envMap)
+					j = 0
 			return
 
 			layerIndex = len(self.nodesByLayer)
@@ -408,13 +409,6 @@ class TimedGraph(nx.DiGraph):
 			previousLayer = currentLayer
 		endTime = time.time()
 		print("%.3f s" % (endTime - startTime))
-
-	def _oldAlg(self, n1, n2):
-		shouldConnect = False
-		if self.nodes[n1]["polygonName"] == self.nodes[n2]["polygonName"]: shouldConnect = True
-		if not shouldConnect and self.nodes[n1]["polygonName"] in self.nodes[n1]["cluster"].nodes: shouldConnect = True
-		if not shouldConnect: return
-		self._addTemporalEdge(n1, n2)
 
 	def getTemporalNeighbors(self, node: str, nodeLayerIndex: int = 0):
 		timedName = GraphAlgorithms._getTimedNodeName(node, self._timeStamps[nodeLayerIndex])

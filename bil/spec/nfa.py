@@ -5,7 +5,7 @@ import json
 from typing import Set
 
 from bil.model.connectivityGraph import ConnectivityGraph
-from bil.model.timedGraph import TimedGraph
+from bil.model.shadowTree import ShadowTree
 from bil.observation.observations import Observation
 from bil.spec.spaceTime import SpaceTimeSet
 from bil.utils.graph import GraphAlgorithms
@@ -98,7 +98,7 @@ class NFA(nx.DiGraph):
 			# FIXME: Start here, and remove shadows that cannot be connected
 			if len(observation.tracks) == 0:
 				# Check connectivity with previous Graph (timed graph) for each penny -> Shadows that are connected will carry forward
-				timedGraph = TimedGraph([self._previousCGraph, cGraph])
+				timedGraph = ShadowTree([self._previousCGraph, cGraph])
 				self.propagatePennies(timedGraph)
 			elif len(observation.tracks) == 1:
 				# Check connectivity with previous Graph (timed graph) for each penny -> Shadows that are connected will to the observation carry forward and turn into the guy
@@ -125,7 +125,7 @@ class NFA(nx.DiGraph):
 					self.activeStates.add(penny)
 		self._previousCGraph = cGraph
 
-	def propagatePennies(self, timedGraph: TimedGraph):
+	def propagatePennies(self, timedGraph: ShadowTree):
 		for penny in self.activeStates:
 			neighbors = timedGraph.getTemporalNeighbors(penny.pose)
 			print(neighbors)

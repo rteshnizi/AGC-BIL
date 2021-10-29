@@ -1,8 +1,8 @@
-from bil.utils.geometry import Geometry
+from bil.utils.geometry import Geometry # I put this here to assign shapely repr functions
 import tkinter as tk
 
 from bil.gui.canvas import Canvas
-from bil.model.timedGraph import TimedGraph
+from bil.model.shadowTree import ShadowTree
 from bil.model.fieldOfViewRenderer import FieldOfViewRenderer
 from bil.model.connectivityGraph import ConnectivityGraph
 from bil.utils.graph import GraphAlgorithms
@@ -49,7 +49,7 @@ class App(tk.Frame):
 		}
 		self.createButtons()
 		self.createDebugOptions()
-		self.chained = None
+		self.shadowTree = None
 		self.canvas = Canvas(master=self.frame, app=self, row=2, col=0)
 		self._renderMap()
 		self._renderTrajectories()
@@ -101,15 +101,15 @@ class App(tk.Frame):
 
 	@property
 	def _maxEventIndex(self):
-		if self.chained is None: return 0
+		if self.shadowTree is None: return 0
 		l = 0
-		for eventCandidates in self.chained.eventsByLayer:
+		for eventCandidates in self.shadowTree.eventsByLayer:
 			l += len(eventCandidates)
 		return l
 
 	@property
 	def _eventLabelText(self):
-		if self.chained is None: return "N/A"
+		if self.shadowTree is None: return "N/A"
 		return "0 ≤ Ev %d ≤ %d" % (self._eventIndex, self._maxEventIndex)
 
 	def _toggleEvents(self):
@@ -117,19 +117,19 @@ class App(tk.Frame):
 		self._renderEvents()
 
 	def _clearEvents(self, force=False):
-		if self.chained is None: return
+		if self.shadowTree is None: return
 		if len(self._eventDrawingId) == 0: return
 		if not force and self._dbg["Show Event"].get() == 1: return
 		[Drawing.RemoveShape(self.canvas.tkCanvas, id) for id in self._eventDrawingId]
 		self._eventDrawingId = []
 
 	def _renderEvents(self):
-		if self.chained is None: return
+		if self.shadowTree is None: return
 		self.eventLabel.set(self._eventLabelText)
-		color = "RED" if self.chained.eventCandidates[self._eventIndex][2] == "ingoing" else "BLUE"
+		color = "RED" if self.shadowTree.eventCandidates[self._eventIndex][2] == "ingoing" else "BLUE"
 		self._eventDrawingId = [
-			Drawing.CreatePolygon(self.canvas.tkCanvas, self.chained.eventCandidates[self._eventIndex][0].exterior.coords, color, "", 1, color),
-			Drawing.CreateLine(self.canvas.tkCanvas, self.chained.eventCandidates[self._eventIndex][3].coords, "PURPLE", "", 2)
+			Drawing.CreatePolygon(self.canvas.tkCanvas, self.shadowTree.eventCandidates[self._eventIndex][0].exterior.coords, color, "", 1, color),
+			Drawing.CreateLine(self.canvas.tkCanvas, self.shadowTree.eventCandidates[self._eventIndex][3].coords, "PURPLE", "", 2)
 		]
 
 	def _changeEvent(self, showNext: bool):
@@ -219,9 +219,8 @@ class App(tk.Frame):
 		else:
 			previousIndex = self._fovIndex
 			nextIndex = self._fovIndex + 1
-		g1 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(previousIndex).fov, self.spec.validators)
-		g2 = ConnectivityGraph(self.bil.map, self.bil.observations.getObservationByIndex(nextIndex).fov, self.spec.validators)
-		self.chained = TimedGraph([g1, g2])
+		fovs = [self.bil.observations.getObservationByIndex(previousIndex).fov, self.bil.observations.getObservationByIndex(previousIndex).fov]
+		self.shadowTree = ShadowTree(self.bil.map, fovs, self.spec.validators)
 		# [Drawing.CreatePolygon(self.canvas.tkCanvas, p.exterior.coords, "RED", "", 1, "RED") for p in self.chained.red]
 		# [Drawing.CreateLine(self.canvas.tkCanvas, l.coords, "PURPLE", "", 2) for l in self.chained.drawLine]
 
