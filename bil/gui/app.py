@@ -103,7 +103,7 @@ class App(tk.Frame):
 	def _maxEventIndex(self):
 		if self.shadowTree is None: return 0
 		l = 0
-		for eventCandidates in self.shadowTree.eventsByLayer:
+		for eventCandidates in self.shadowTree.componentEvents:
 			l += len(eventCandidates)
 		return l
 
@@ -126,11 +126,13 @@ class App(tk.Frame):
 	def _renderEvents(self):
 		if self.shadowTree is None: return
 		self.eventLabel.set(self._eventLabelText)
-		color = "RED" if self.shadowTree.eventCandidates[self._eventIndex][2] == "ingoing" else "BLUE"
-		self._eventDrawingId = [
-			Drawing.CreatePolygon(self.canvas.tkCanvas, self.shadowTree.eventCandidates[self._eventIndex][0].exterior.coords, color, "", 1, color),
-			Drawing.CreateLine(self.canvas.tkCanvas, self.shadowTree.eventCandidates[self._eventIndex][3].coords, "PURPLE", "", 2)
-		]
+		for eventCandidates in self.shadowTree.componentEvents:
+			for eventCandidate in eventCandidates:
+				color = "RED" if eventCandidate[2] == "ingoing" else "BLUE"
+				self._eventDrawingId = self._eventDrawingId + [
+					Drawing.CreatePolygon(self.canvas.tkCanvas, eventCandidate[0].exterior.coords, color, "", 1, color),
+					Drawing.CreateLine(self.canvas.tkCanvas, eventCandidate[3].coords, "PURPLE", "", 2)
+				]
 
 	def _changeEvent(self, showNext: bool):
 		self._clearEvents(force=True)
@@ -219,10 +221,8 @@ class App(tk.Frame):
 		else:
 			previousIndex = self._fovIndex
 			nextIndex = self._fovIndex + 1
-		fovs = [self.bil.observations.getObservationByIndex(previousIndex).fov, self.bil.observations.getObservationByIndex(previousIndex).fov]
+		fovs = [self.bil.observations.getObservationByIndex(previousIndex).fov, self.bil.observations.getObservationByIndex(nextIndex).fov]
 		self.shadowTree = ShadowTree(self.bil.map, fovs, self.spec.validators)
-		# [Drawing.CreatePolygon(self.canvas.tkCanvas, p.exterior.coords, "RED", "", 1, "RED") for p in self.chained.red]
-		# [Drawing.CreateLine(self.canvas.tkCanvas, l.coords, "PURPLE", "", 2) for l in self.chained.drawLine]
 
 	def chainAll(self):
 		GraphAlgorithms.displayGraphAuto(self.bil.fieldOfView.chainedGraphThroughTime(self.spec), displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)

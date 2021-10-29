@@ -19,6 +19,7 @@ class ShadowTree(nx.DiGraph):
 		super().__init__()
 		self.MIN_TIME_DELTA = 1E-2
 		self._fig = None
+		self.componentEvents: List[List[Polygon]] = []
 
 		print("Connecting Graphs through time...")
 		self._build(envMap, fovs, validators, startInd, endInd)
@@ -193,7 +194,8 @@ class ShadowTree(nx.DiGraph):
 			mapBoundaryVerts = envMap.polygon.exterior.coords
 			for v1, v2 in zip(mapBoundaryVerts, mapBoundaryVerts[1:]):
 				mapEdge = LineString([v1, v2])
-				if boundingBox.intersects(mapEdge): collisionData[sensorEdgeId].append(mapEdge)
+				if boundingBox.intersects(mapEdge):
+					collisionData[sensorEdgeId].append(mapEdge)
 		return collisionData
 
 	def _initEdgeIntervals(self, sensor: SensingRegion, transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords, collisionData: Dict[str, Set[LineString]], inverse: bool):
@@ -229,10 +231,10 @@ class ShadowTree(nx.DiGraph):
 			(sensorEdge, mapEdge, intervalStart, intervalEnd) = collisionIntervals.pop(i)
 			# Epsilon for shard search
 			deltaT = intervalEnd - intervalStart
-			if deltaT <= self.MIN_TIME_DELTA:
-				continue
 			ingoingIntervals = []
 			outgoingIntervals = []
+			if deltaT <= self.MIN_TIME_DELTA:
+				continue
 			((isCollidingAtStart, isCollidingAtMid, isCollidingAtEnd), firstHalfBb, secondHalfBb, edgeAtMid) = self._checkBoundingBoxIntervalForCollision(previousSensor, sensorEdge, mapEdge, transformation, centerOfRotation, intervalStart, intervalEnd)
 			intervalMid = (intervalStart + intervalEnd) / 2
 			if isCollidingAtStart != isCollidingAtMid:
@@ -263,7 +265,7 @@ class ShadowTree(nx.DiGraph):
 			#### Returns
 			A list of intermediate between which there is at most one component event.
 		"""
-		centerOfRotation = previousSensor.polygon.exterior.coords[3]
+		centerOfRotation = previousSensor.polygon.exterior.coords[3] # FIXME: Hard coded value
 		transformation = Geometry.getAffineTransformation(previousSensor.polygon, currentSensor.polygon, centerOfRotation)
 		previousCollidingEdges = self._getCollidingEdgesByEdge(previousSensor, envMap)
 		currentCollidingEdges = self._getCollidingEdgesByEdge(currentSensor, envMap)
@@ -275,6 +277,7 @@ class ShadowTree(nx.DiGraph):
 		for id in currentCollidingEdges:
 			for l in currentCollidingEdges[id]:
 				if id in intermediateCollisions: intermediateCollisions[id].remove(l)
+				# if id in intermediateCollisions: intermediateCollisions[id].remove(l)
 		collisionIntervals = self._initColissionIntervals(previousSensor, intermediateCollisions)
 
 		while len(collisionIntervals) > 0:
@@ -282,7 +285,7 @@ class ShadowTree(nx.DiGraph):
 		# Each interval is represented as a tuple: (sensorEdge, mapEdge, float, float)
 		# The first float is the interval start and the second one is interval end times.
 		intervals = self._initEdgeIntervals(previousSensor, transformation, centerOfRotation, previousCollidingEdges, inverse=False)
-		haveOverlap = intervals + self.outgoingIntervals
+		haveOverlap = intervals + outgoingIntervals
 		dontHaveOverlap = []
 		eventCandidates = []
 		while len(haveOverlap) > 0:
@@ -304,7 +307,7 @@ class ShadowTree(nx.DiGraph):
 				p = Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, centerOfRotation)
 				eventCandidates.append((p, interval[3], "outgoing", interval[1]))
 		intervals = self._initEdgeIntervals(currentSensor, transformation, centerOfRotation, currentCollidingEdges, inverse=True)
-		haveOverlap = intervals + self.ingoingIntervals
+		haveOverlap = intervals + ingoingIntervals
 		dontHaveOverlap = []
 		while len(haveOverlap) > 0:
 			i = 0
@@ -354,61 +357,9 @@ class ShadowTree(nx.DiGraph):
 			else:
 				for sensorId in previousFov.sensors:
 					componentEvents = self._findIntermediateComponentEvents(previousFov.sensors[sensorId].region, currentFov.getEquivalentSensorById(sensorId).region, envMap)
+					self.componentEvents.append(componentEvents)
 					j = 0
-			return
-
-			layerIndex = len(self.nodesByLayer)
-			self.nodesByLayer.append([])
-			self._timeStamps.append(currentLayer.timestamp)
-			print ("Chaining for %.1f" % currentLayer.timestamp)
-			gDense = currentLayer.condense()
-			for n in gDense.nodes:
-				newNode = GraphAlgorithms._getTimedNodeName(n, currentLayer.timestamp)
-				self.add_node(newNode)
-				n = n if n in currentLayer.nodes else gDense.nodes[n]["mappedName"]
-				GraphAlgorithms.cloneNodeProps(currentLayer.nodes[n] if not n.startswith("sym") else gDense.nodes[n], self.nodes[newNode])
-				self.nodes[newNode]["polygonName"] = n # This is lazy way to obtain the name of the polygon without doing string split etc.
-				self.nodes[newNode]["cluster"] = currentLayer.nodeClusters[currentLayer.nodeToClusterMap[n]]
-				self.nodesByLayer[layerIndex].append(newNode)
-			for e in gDense.edges:
-				self.add_edge(GraphAlgorithms._getTimedNodeName(e[0], currentLayer.timestamp), GraphAlgorithms._getTimedNodeName(e[1], currentLayer.timestamp), isTemporal=False)
-			if layerIndex == 0:
-				previousLayer = currentLayer
-				continue
-			# CREATE TEMPORAL EDGES
-			for n1 in self.nodesByLayer[layerIndex - 1]:
-				if GraphAlgorithms.isBeamNode(n1): continue
-				for n2 in self.nodesByLayer[layerIndex]:
-					if GraphAlgorithms.isBeamNode(n2): continue
-					if self.nodes[n1]["type"] == "sensor" and self.nodes[n2]["type"] != "sensor": continue
-					if self.nodes[n1]["type"] == "sensor" and self.nodes[n2]["type"] == "sensor":
-						if self.nodes[n1]["polygonName"] != self.nodes[n2]["polygonName"]: continue
-						self._addTemporalEdge(n1, n2)
-						break
-					if not Geometry.polygonAndPolygonIntersect(self.nodes[n1]["cluster"].polygon, self.nodes[n2]["cluster"].polygon): continue
-					intersection = Geometry.intersect(self.nodes[n1]["cluster"].polygon, self.nodes[n2]["cluster"].polygon)[0] # We are sure there will be one intersection
-					(pXs, pYs) = intersection.exterior.coords.xy
-					connectedTemporally = True
-					for sensorKey in currentLayer.fov.sensors:
-						currentLayerSensor = currentLayer.fov.sensors[sensorKey]
-						if not Geometry.haveOverlappingEdge(currentLayerSensor.region.polygon, intersection): continue
-						for i in range(-1, len(currentLayerSensor._originalCoords)):
-							(x1, y1) = currentLayerSensor._originalCoords[i]
-							(x2, y2) = currentLayerSensor._originalCoords[i + 1]
-							(x3, y3) = fovCoordsMap[(x1, y1)]
-							(x4, y4) = fovCoordsMap[(x2, y2)]
-							for j in range(len(pXs)):
-								if self._testConnectivity(x1, y1, x2, y2, x3, y3, x4, y4, pXs[j], pYs[j]):
-									# This means the instersection area was swept away by a sensor
-									connectedTemporally = False
-								if not connectedTemporally: break
-							if not connectedTemporally: break
-						if not connectedTemporally: continue
-						self._addTemporalEdge(n1, n2)
-					self._oldAlg(n1 ,n2)
-			previousLayer = currentLayer
-		endTime = time.time()
-		print("%.3f s" % (endTime - startTime))
+		return
 
 	def getTemporalNeighbors(self, node: str, nodeLayerIndex: int = 0):
 		timedName = GraphAlgorithms._getTimedNodeName(node, self._timeStamps[nodeLayerIndex])
