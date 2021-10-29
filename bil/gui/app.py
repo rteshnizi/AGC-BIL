@@ -41,7 +41,6 @@ class App(tk.Frame):
 		self.specDropdownValue = tk.StringVar(self.master)
 		self.specDropdownValue.set("simple-1") # set the default option
 		self._dbg = {
-			"Print Mouse": tk.IntVar(master=self.master, value=0),
 			"Render Trajectory": tk.IntVar(master=self.master, value=1),
 			"Display Geom Graph": tk.IntVar(master=self.master, value=0),
 			"Display Spring Graph": tk.IntVar(master=self.master, value=1),
@@ -178,10 +177,6 @@ class App(tk.Frame):
 		self._renderSpec()
 
 	@property
-	def shouldPrintMouse(self) -> bool:
-		return self._dbg["Print Mouse"].get() == 1
-
-	@property
 	def shouldRenderTrajectory(self) -> bool:
 		return self._dbg["Render Trajectory"].get() == 1
 
@@ -248,15 +243,12 @@ class App(tk.Frame):
 		row = 0
 		column = 0
 
-		self._createButton(row, column, "Next FOV", self._nextFov)
+		self._createButton(row, column, "< FOV", self._prevFov)
 		column += 1
-		self._createButton(row, column, "Prev FOV", self._prevFov)
+		self._createButton(row, column, "FOV >", self._nextFov)
 		column += 1
 
 		self._createButton(row, column, "Dispaly G", self.showGraph)
-		column += 1
-
-		self._createButton(row, column, "Condense", self.condenseGraph)
 		column += 1
 
 		self._createButton(row, column, "Chain 1", self.chainGraphs)
@@ -271,9 +263,9 @@ class App(tk.Frame):
 		self._createButton(row, column, "Spec Graph", self.showSpecGraph)
 		column += 1
 
-		self._createButton(row, column, "Next Event", self._nextEvent)
+		self._createButton(row, column, "< Event", self._prevEvent)
 		column += 1
-		self._createButton(row, column, "Prev Event", self._prevEvent)
+		self._createButton(row, column, "Event >", self._nextEvent)
 		column += 1
 
 	def createDebugOptions(self):
