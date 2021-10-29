@@ -299,12 +299,6 @@ class App(tk.Frame):
 		label.grid(row=1, column=column)
 		column += 1
 
-
-	def condenseGraph(self):
-		graph = ConnectivityGraph(self.bil.map, self.observationToRender.fov, self.spec.validators)
-		condensed = graph.condense()
-		GraphAlgorithms.displayGraphAuto(condensed, displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
-
 	def validate(self):
 		self._clearFov()
 		self._dbg["Show FOV"].set(1)

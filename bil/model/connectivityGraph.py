@@ -1,61 +1,48 @@
-import re
 import networkx as nx
-from shapely.geometry import LineString, Point, Polygon, MultiPolygon
-from typing import List, Set, Dict, Union
+from shapely.geometry import LineString, Polygon, MultiPolygon
+from typing import List, Union
 
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.sensingRegion import SensingRegion
 from bil.model.shadowRegion import ShadowRegion
 from bil.model.map import Map
+from bil.model.validatorRegion import ValidatorRegion
 from bil.observation.fov import FOV
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
-
-class NodeCluster:
-	def __init__(self, cGraph: "ConnectivityGraph", initialNode: str):
-		self._name = initialNode
-		self._cGraph = cGraph
-		self.nodes: Set[str] = { initialNode }
-		self._polygon = None
-
-	def __repr__(self) -> str:
-		return "NodeCluster-%s" % self._name
-
-	@property
-	def polygon(self):
-		if self._polygon is None:
-			self._polygon = Geometry.union([self._cGraph.nodes[nodeName]["region"].polygon for nodeName in self.nodes])
-		return self._polygon
 
 class ConnectivityGraph(nx.DiGraph):
 	def __init__(self, envMap: Map, fov: FOV, validators):
 		super().__init__()
 		self.fov = fov
 		self.validators = validators
-		self.shadows: List[str] = []
-		self.fovComponents: List[str] = []
+		self.fovNodes: List[str] = []
+		self.shadowNodes: List[str] = []
+		self.symbolNodes: List[str] = []
 		self.map: Map = envMap
 		self.timestamp = fov.time
-		self._disjointPolys: List[PolygonalRegion] = []
 		print("Building graph for %s" % self.timestamp)
 		self._build(fov)
 		self._fig = None
-		self._condensed = None
-		self.nodeClusters: Dict[str, NodeCluster] = {}
-		self.nodeToClusterMap: Dict[str, str] = {}
-		self._OBSOLETE_nodeClusters: Dict[str, Set[str]] = {}
-		self._OBSOLETE_nodeToClusterMap: Dict[str, str] = {}
-		self._OBSOLETE_condensed = None
 
 	def __repr__(self):
 		return "cGraph-%.2f" % self.timestamp
 
-	def condense(self):
-		return # NOOP
-
-	def _addNode(self, nodeName):
+	def _addNode(self, nodeName: str, region: PolygonalRegion, type: str):
 		self.add_node(nodeName)
+		self.nodes[nodeName]["region"] = region
+		self.nodes[nodeName]["centroid"] = region.polygon.centroid
+		self.nodes[nodeName]["type"] = type
 		self.nodes[nodeName]["timestamp"] = self.timestamp
+		if type == "sensor":
+			self.fovNodes.append(nodeName)
+		elif type == "shadow":
+			self.shadowNodes.append(nodeName)
+		elif type == "symbol":
+			self.symbolNodes.append(nodeName)
+		else:
+			raise "Unknown node type %s" % type
+		return
 
 	def _addEdges(self, fromStr, toStr):
 		self.add_edge(fromStr, toStr)
@@ -64,11 +51,7 @@ class ConnectivityGraph(nx.DiGraph):
 	def _addSingleSensorRegionConnectedComponent(self, connectedComponent, index):
 		name = "FOV-%d" % index
 		region = SensingRegion(name, [], self.timestamp, index, polygon=connectedComponent)
-		self.fovComponents.append(name)
-		self._addNode(name)
-		self.nodes[name]["region"] = region
-		self.nodes[name]["centroid"] = region.polygon.centroid
-		self.nodes[name]["type"] = "sensor"
+		self._addNode(name, region, "sensor")
 		return
 
 	def _addSensorRegionConnectedComponents(self, fovUnion: Union[Polygon, MultiPolygon]):
@@ -82,17 +65,13 @@ class ConnectivityGraph(nx.DiGraph):
 		return
 
 	def _createNewShadow(self, shadow: Polygon):
-		name = "S-%d" % len(self.shadows)
+		name = "S-%d" % len(self.shadowNodes)
 		region = ShadowRegion(name, Geometry.getPolygonCoords(shadow))
-		self.shadows.append(name)
-		self._addNode(name)
-		self.nodes[name]["region"] = region
-		self.nodes[name]["centroid"] = region.polygon.centroid
-		self.nodes[name]["type"] = "shadow"
-		for fovName in self.fovComponents:
-			fovComponent = self.nodes[fovName]["region"]
+		self._addNode(name, region, "shadow")
+		for fovNode in self.fovNodes:
+			fovComponent = self.nodes[fovNode]["region"]
 			if Geometry.haveOverlappingEdge(fovComponent.polygon, region.polygon):
-				self._addEdges(fovName, name)
+				self._addEdges(fovNode, name)
 		return
 
 	def _mergeShadow(self, existingShadow: ShadowRegion, shadow: Polygon):
@@ -103,10 +82,10 @@ class ConnectivityGraph(nx.DiGraph):
 		return
 
 	def _updateShadows(self, newShadow: Polygon):
-		if len(self.shadows) == 0:
+		if len(self.shadowNodes) == 0:
 			self._createNewShadow(newShadow)
 		else:
-			beforeUpdate = self.shadows.copy()
+			beforeUpdate = self.shadowNodes.copy()
 			for existingShadowName in beforeUpdate:
 				existingShadow = self.nodes[existingShadowName]["region"]
 				if Geometry.haveOverlappingEdge(existingShadow.polygon, newShadow):
@@ -131,24 +110,57 @@ class ConnectivityGraph(nx.DiGraph):
 			self._updateShadows(shadow)
 		return
 
-	def _isValidatorPolygon(self, polygonName):
-		"""
-		Utility function to check if this polygon is made for a validator region
-		"""
-		return polygonName.startswith("sym-")
+	def _addSymbols(self, fovUnion: Union[Polygon, MultiPolygon]):
+		for validatorName in self.validators:
+			validator = self.validators[validatorName]
+			if not validator.isRegion: continue
+			validatorRegion: PolygonalRegion = validator.value
+			insidePolys = Geometry.intersect(validatorRegion.polygon, fovUnion)
+			insidePolys = [p for p in insidePolys if p.length > 0]
+			insidePolys = list(filter(lambda p: not isinstance(p, LineString), insidePolys))
+			for i in range(len(insidePolys)):
+				poly = insidePolys[i]
+				name = "%s-%d" % (validatorName, i)
+				region = ValidatorRegion(name, Geometry.getPolygonCoords(poly), inFov=True)
+				self._addNode(name, region, "symbol")
+				broken = False
+				for fovNode in self.fovNodes:
+					fovRegion: SensingRegion = self.nodes[fovNode]["region"]
+					if fovRegion.polygon.intersects(poly):
+						self._addEdges(fovNode, name)
+						broken = True
+						break
+				if broken: continue
+			shadows = Geometry.shadows(validatorRegion.polygon, fovUnion)
+			shadows = [p for p in shadows if p.length > 0]
+			shadows = list(filter(lambda p: not isinstance(p, LineString), shadows))
+			for i in range(len(shadows)):
+				poly = shadows[i]
+				name = "%s-%d" % (validatorName, (i + len(insidePolys)))
+				region = ValidatorRegion(name, Geometry.getPolygonCoords(poly), inFov=False)
+				self._addNode(name, region, "symbol")
+				broken = False
+				for shadowNode in self.shadowNodes:
+					shadowRegion: SensingRegion = self.nodes[shadowNode]["region"]
+					if shadowRegion.polygon.intersects(poly):
+						self._addEdges(shadowNode, name)
+						break
+				if broken: continue
+		return
 
-	def _build(self, fov):
+	def _build(self, fov: Union[Polygon, MultiPolygon]):
 		# First we create all the nodes with respect to FOV
 		fovUnion = fov.polygon
 		self._addSensorRegionConnectedComponents(fovUnion)
 		self._constructShadows(fovUnion)
+		self._addSymbols(fovUnion)
 		return
 
 	def displayGraph(self, displayGeomGraph, displaySpringGraph):
 		if displayGeomGraph:
-			return
+			self._fig = GraphAlgorithms.displayGeometricGraph(self, self.fovNodes, self.shadowNodes)
 		else:
-			self._fig = GraphAlgorithms.displaySpringGraph(self, self.fovComponents, self.shadows)
+			self._fig = GraphAlgorithms.displaySpringGraph(self, self.fovNodes, self.shadowNodes, self.symbolNodes)
 		return
 
 	def killDisplayedGraph(self):

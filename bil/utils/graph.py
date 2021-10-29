@@ -88,12 +88,19 @@ class GraphAlgorithms:
 			GraphAlgorithms.displaySpringGraph(g, bNodes, rNodes)
 
 	@staticmethod
-	def displaySpringGraph(g: nx.DiGraph, blueNodes, redNodes):
+	def displaySpringGraph(g: nx.DiGraph, greenNodes: list, redNodes: list, symbolNodes: list):
+		greenNodesWithSymbols = greenNodes.copy()
+		redNodesWithSymbols = redNodes.copy()
+		for symNode in symbolNodes:
+			if g.nodes[symNode]["region"].inFov:
+				greenNodesWithSymbols.append(symNode)
+			else:
+				redNodesWithSymbols.append(symNode)
 		fig = plt.figure(len(GraphAlgorithms._allFigs))
 		GraphAlgorithms._allFigs.add(fig)
 		pos = nx.spring_layout(g)
-		nx.draw_networkx_nodes(g, pos, nodelist=blueNodes, node_color='palegreen')
-		nx.draw_networkx_nodes(g, pos, nodelist=redNodes, node_color='tomato')
+		nx.draw_networkx_nodes(g, pos, nodelist=greenNodesWithSymbols, node_color="palegreen")
+		nx.draw_networkx_nodes(g, pos, nodelist=redNodesWithSymbols, node_color="tomato")
 		nx.draw_networkx_edges(g, pos)
 		nx.draw_networkx_labels(g, pos, font_family="DejaVu Sans", font_size=10)
 		plt.axis("off")

@@ -21,7 +21,7 @@ class FieldOfViewRenderer:
 			self._cGraphCache[fov.time] = cGraph
 		else:
 			cGraph = self._cGraphCache[fov.time]
-		for shadowName in cGraph.shadows:
+		for shadowName in cGraph.shadowNodes:
 			shadowRegion = cGraph.nodes[shadowName]["region"]
 			shadowRegion.render(canvas)
 		self._previousFov = fov
@@ -32,7 +32,7 @@ class FieldOfViewRenderer:
 		for sensorId in self._previousFov.sensors:
 			sensor = self._previousFov.sensors[sensorId]
 			sensor.region.clearRender(canvas)
-		for shadowName in self._previousCGraph.shadows:
+		for shadowName in self._previousCGraph.shadowNodes:
 			shadowRegion = self._previousCGraph.nodes[shadowName]["region"]
 			shadowRegion.clearRender(canvas)
 		self._previousFov = None
