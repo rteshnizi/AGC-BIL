@@ -223,6 +223,10 @@ class App(tk.Frame):
 			nextIndex = self._fovIndex + 1
 		fovs = [self.bil.observations.getObservationByIndex(previousIndex).fov, self.bil.observations.getObservationByIndex(nextIndex).fov]
 		self.shadowTree = ShadowTree(self.bil.map, fovs, self.spec.validators)
+		for i in range(len(self.shadowTree.graphs)):
+			graphs = self.shadowTree.graphs[i]
+			for graph in graphs:
+				graph.displayGraph(self.displayGeomGraph, self.displaySpringGraph)
 
 	def chainAll(self):
 		GraphAlgorithms.displayGraphAuto(self.bil.fieldOfView.chainedGraphThroughTime(self.spec), displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)

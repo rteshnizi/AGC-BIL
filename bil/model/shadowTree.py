@@ -20,6 +20,7 @@ class ShadowTree(nx.DiGraph):
 		self.MIN_TIME_DELTA = 1E-2
 		self._fig = None
 		self.componentEvents: List[List[Polygon]] = []
+		self.graphs: List[List[ConnectivityGraph]] = []
 
 		print("Connecting Graphs through time...")
 		self._build(envMap, fovs, validators, startInd, endInd)
@@ -256,7 +257,7 @@ class ShadowTree(nx.DiGraph):
 					i += 1
 		return (ingoingIntervals, outgoingIntervals)
 
-	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, envMap: Map) -> List[Polygon]:
+	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, envMap: Map) -> Tuple[Polygon, float, str, LineString]:
 		"""
 			Given the original configuration of the FOV (`previousSensor`) and the final configuration (`currentSensor`)
 			find all the times where there is a shadow component event.
@@ -328,7 +329,15 @@ class ShadowTree(nx.DiGraph):
 				p = Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, centerOfRotation)
 				eventCandidates.append((p, interval[3], "ingoing", interval[1]))
 		eventCandidates.sort(key=lambda e: e[1])
+		# (FOV polygon, timeofEvent, "ingoing" | "outgoing", map edge relevant to the event)
 		return eventCandidates
+
+	def _createConnectivityGraphPerEvent(self, envMap: Map, events: Tuple[Polygon, float, str, LineString], validators: Dict[str, Validator], startTime: float, endTime: float):
+		graphs = []
+		for event in events:
+			graph = ConnectivityGraph(envMap, event[0], ((event[1] * (endTime - startTime)) + startTime), validators)
+			graphs.append(graph)
+		return graphs
 
 	def _appendGraph(self, graph: ConnectivityGraph):
 		for node in graph.nodes:
@@ -358,7 +367,8 @@ class ShadowTree(nx.DiGraph):
 				for sensorId in previousFov.sensors:
 					componentEvents = self._findIntermediateComponentEvents(previousFov.sensors[sensorId].region, currentFov.getEquivalentSensorById(sensorId).region, envMap)
 					self.componentEvents.append(componentEvents)
-					j = 0
+					graphs = self._createConnectivityGraphPerEvent(envMap, componentEvents, validators, previousFov.time, currentFov.time)
+					self.graphs.append(graphs)
 		return
 
 	def getTemporalNeighbors(self, node: str, nodeLayerIndex: int = 0):
