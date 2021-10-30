@@ -75,17 +75,20 @@ class GraphAlgorithms:
 		"""
 		Detects beam and non-beam nodes for the correct coloring
 		"""
-		bNodes = []
-		rNodes = []
+		grnNodes = []
+		symNodes = []
+		redNodes = []
 		for n in g.nodes:
-			if GraphAlgorithms.isBeamNode(n):
-				rNodes.append(n)
+			if n.startswith("FOV"):
+				grnNodes.append(n)
+			elif n.startswith("SYM"):
+				symNodes.append(n)
 			else:
-				bNodes.append(n)
+				redNodes.append(n)
 		if displayGeomGraph:
-			GraphAlgorithms.displayGeometricGraph(g, bNodes, rNodes)
+			GraphAlgorithms.displayGeometricGraph(g, grnNodes, redNodes)
 		if displaySpringGraph:
-			GraphAlgorithms.displaySpringGraph(g, bNodes, rNodes)
+			GraphAlgorithms.displaySpringGraph(g, grnNodes, redNodes, symNodes)
 
 	@staticmethod
 	def displaySpringGraph(g: nx.DiGraph, greenNodes: list, redNodes: list, symbolNodes: list):
@@ -101,7 +104,18 @@ class GraphAlgorithms:
 		pos = nx.spring_layout(g)
 		nx.draw_networkx_nodes(g, pos, nodelist=greenNodesWithSymbols, node_color="palegreen")
 		nx.draw_networkx_nodes(g, pos, nodelist=redNodesWithSymbols, node_color="tomato")
-		nx.draw_networkx_edges(g, pos)
+		normalEdges = []
+		temporalEdges = []
+		for e in g.edges:
+			if "isTemporal" not in g.edges[e]:
+				normalEdges.append(e)
+			else:
+				temporalEdges.append(e)
+		nx.draw_networkx_edges(g, pos, edgelist=normalEdges, edge_color="black")
+		nx.draw_networkx_edges(g, pos, edgelist=temporalEdges, edge_color="green", width=3)
+		# normal edges
+		normalEdges = list(filter(lambda e: "isTemporal" not in  g.edges[e], g.edges))
+		nx.draw_networkx_edges(g, pos, edgelist=normalEdges)
 		nx.draw_networkx_labels(g, pos, font_family="DejaVu Sans", font_size=10)
 		plt.axis("off")
 		fig.show()

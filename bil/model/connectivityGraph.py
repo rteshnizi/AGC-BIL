@@ -136,7 +136,7 @@ class ConnectivityGraph(nx.DiGraph):
 			shadows = list(filter(lambda p: not isinstance(p, LineString), shadows))
 			for i in range(len(shadows)):
 				poly = shadows[i]
-				name = "%s-%d" % (validatorName, (i + len(insidePolys)))
+				name = "SYM-%s-%d" % (validatorName, (i + len(insidePolys)))
 				region = ValidatorRegion(name, Geometry.getPolygonCoords(poly), inFov=False)
 				self._addNode(name, region, "symbol")
 				broken = False

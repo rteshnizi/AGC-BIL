@@ -1,3 +1,4 @@
+from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.sensingRegion import SensingRegion
 import networkx as nx
 from shapely.geometry import LineString, Point, Polygon
@@ -19,11 +20,16 @@ class ShadowTree(nx.DiGraph):
 		super().__init__()
 		self.MIN_TIME_DELTA = 1E-2
 		self._fig = None
+		self.times: List[float] = []
 		self.componentEvents: List[List[Polygon]] = []
 		self.graphs: List[List[ConnectivityGraph]] = []
+		self.nodesByLayer: List[str] = []
 
 		print("Connecting Graphs through time...")
 		self._build(envMap, fovs, validators, startInd, endInd)
+
+	def _getNodeAtTime(self, node: str, time: float):
+		return self._generateTemporalName(node, time)
 
 	def _generateTemporalName(self, name: str, time: float):
 		return "%s-%.2f" % (name, time)
@@ -339,7 +345,15 @@ class ShadowTree(nx.DiGraph):
 			graphs.append(graph)
 		return graphs
 
+	def _addTemporalEdges(self, eventGraphs: List[ConnectivityGraph]):
+		for graph in eventGraphs:
+			self._appendGraph(graph)
+			pass
+		return
+
 	def _appendGraph(self, graph: ConnectivityGraph):
+		isInitialGraph = (len(self.times) == 0)
+		self.node
 		for node in graph.nodes:
 			temporalName = self._generateTemporalName(node, graph.timestamp)
 			self.add_node(temporalName)
@@ -348,6 +362,14 @@ class ShadowTree(nx.DiGraph):
 			frm = self._generateTemporalName(edge[0], graph.timestamp)
 			to = self._generateTemporalName(edge[1], graph.timestamp)
 			self.add_edge(frm, to)
+		self.times.append(graph.timestamp)
+		if isInitialGraph: return
+		previousLayerTime = self.times[len(self.times) - 2]
+		for node in graph.nodes:
+			previousLayerNode = self._generateTemporalName(node, previousLayerTime)
+			previousLayerNodeRegion: PolygonalRegion = self.nodes[previousLayerNode]["region"]
+			if previousLayerNodeRegion.polygon.intersects(graph.nodes[node]["region"].polygon):
+				self._addTemporalEdge(previousLayerNode, temporalName)
 		return
 
 	def _build(self, envMap: Map, fovs: List[Fov], validators: Dict[str, Validator], startInd = 0, endInd = None):
@@ -369,6 +391,8 @@ class ShadowTree(nx.DiGraph):
 					self.componentEvents.append(componentEvents)
 					graphs = self._createConnectivityGraphPerEvent(envMap, componentEvents, validators, previousFov.time, currentFov.time)
 					self.graphs.append(graphs)
+					self._addTemporalEdges(graphs)
+		print("took %.2fms" % (time.time() - startTime))
 		return
 
 	def getTemporalNeighbors(self, node: str, nodeLayerIndex: int = 0):
@@ -381,10 +405,7 @@ class ShadowTree(nx.DiGraph):
 		return neighbors
 
 	def displayGraph(self, displayGeomGraph, displaySpringGraph):
-		if displayGeomGraph:
-			self._fig = GraphAlgorithms.displayGeometricGraph(self, self._regionNodes, self._beamNodes)
-		else:
-			self._fig = GraphAlgorithms.displaySpringGraph(self, self._regionNodes, self._beamNodes)
+		self._fig = GraphAlgorithms.displayGraphAuto(self, displayGeomGraph, displaySpringGraph)
 
 	def killDisplayedGraph(self):
 		if self._fig:
