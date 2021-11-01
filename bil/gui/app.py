@@ -42,8 +42,8 @@ class App(tk.Frame):
 		self.specDropdownValue.set("simple-1") # set the default option
 		self._dbg = {
 			"Render Trajectory": tk.IntVar(master=self.master, value=1),
-			"Display Geom Graph": tk.IntVar(master=self.master, value=0),
-			"Display Spring Graph": tk.IntVar(master=self.master, value=1),
+			"Display Geom Graph": tk.IntVar(master=self.master, value=1),
+			"Display Spring Graph": tk.IntVar(master=self.master, value=0),
 			"Show FOV": tk.IntVar(master=self.master, value=0),
 			"Show Event": tk.IntVar(master=self.master, value=0),
 		}

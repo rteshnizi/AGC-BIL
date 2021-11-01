@@ -20,16 +20,11 @@ class ShadowTree(nx.DiGraph):
 		super().__init__()
 		self.MIN_TIME_DELTA = 1E-2
 		self._fig = None
-		self.times: List[float] = []
 		self.componentEvents: List[List[Polygon]] = []
-		self.graphs: List[List[ConnectivityGraph]] = []
-		self.nodesByLayer: List[str] = []
+		self.graphs: List[ConnectivityGraph] = []
 
 		print("Connecting Graphs through time...")
 		self._build(envMap, fovs, validators, startInd, endInd)
-
-	def _getNodeAtTime(self, node: str, time: float):
-		return self._generateTemporalName(node, time)
 
 	def _generateTemporalName(self, name: str, time: float):
 		return "%s-%.2f" % (name, time)
@@ -39,9 +34,13 @@ class ShadowTree(nx.DiGraph):
 		lower = n1 if upper != n1 else n2
 		return (lower, upper)
 
-	def _addTemporalEdge(self, n1, n2):
+	def _addNode(self, n, time):
+		self.add_node(n)
+		self.nodes[n]["timestamp"] = time
+
+	def _addEdge(self, n1, n2, isTemporal=False):
 		(lower, upper) = self._getLowerAndUpperNode(n1, n2)
-		self.add_edge(lower, upper, isTemporal=True)
+		self.add_edge(lower, upper, isTemporal=isTemporal)
 
 	def _checkChangesInCollidingEdges(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon, envMap: Map) -> Tuple[bool, Set[Geometry.CoordsList], Set[Geometry.CoordsList]]:
 		"""
@@ -338,7 +337,7 @@ class ShadowTree(nx.DiGraph):
 		# (FOV polygon, timeofEvent, "ingoing" | "outgoing", map edge relevant to the event)
 		return eventCandidates
 
-	def _createConnectivityGraphPerEvent(self, envMap: Map, events: Tuple[Polygon, float, str, LineString], validators: Dict[str, Validator], startTime: float, endTime: float):
+	def _appendConnectivityGraphPerEvent(self, envMap: Map, events: Tuple[Polygon, float, str, LineString], validators: Dict[str, Validator], startTime: float, endTime: float):
 		graphs = []
 		for event in events:
 			graph = ConnectivityGraph(envMap, event[0], ((event[1] * (endTime - startTime)) + startTime), validators)
@@ -347,29 +346,41 @@ class ShadowTree(nx.DiGraph):
 
 	def _addTemporalEdges(self, eventGraphs: List[ConnectivityGraph]):
 		for graph in eventGraphs:
+			isInitialGraph = (len(self.graphs) == 0)
 			self._appendGraph(graph)
-			pass
+			if isInitialGraph: return
+			previousGraph = self.graphs[-2]
+			# Add temporal edges between fovs
+			for fovNode in previousGraph.fovNodes:
+				fovNodeInShadowTree = self._generateTemporalName(fovNode, previousGraph.timestamp)
+				fovNodeInCurrentGraph = self._generateTemporalName(fovNode, graph.timestamp)
+				self._addEdge(fovNodeInShadowTree, fovNodeInCurrentGraph, isTemporal=True)
+			# Add temporal edges between symbols
+			for symNode in previousGraph.symbolNodes:
+				symNodeInShadowTree = self._generateTemporalName(symNode, previousGraph.timestamp)
+				symNodeInCurrentGraph = self._generateTemporalName(symNode, graph.timestamp)
+				self._addEdge(symNodeInShadowTree, symNodeInCurrentGraph, isTemporal=True)
+			# Add temporal edges between shadows
+			for shadowNodeInPreviousGraph in previousGraph.shadowNodes:
+				for shadowNodeInCurrentGraph in graph.shadowNodes:
+					previousShadowNodeRegion = previousGraph.nodes[shadowNodeInPreviousGraph]["region"]
+					currentShadowNodeRegion = graph.nodes[shadowNodeInCurrentGraph]["region"]
+					if previousShadowNodeRegion.polygon.intersects(currentShadowNodeRegion.polygon):
+						shadowNodeInShadowTree = self._generateTemporalName(shadowNodeInPreviousGraph, previousGraph.timestamp)
+						shadowNodeInCurrentGraph = self._generateTemporalName(shadowNodeInCurrentGraph, graph.timestamp)
+						self._addEdge(shadowNodeInShadowTree, shadowNodeInCurrentGraph, isTemporal=True)
 		return
 
 	def _appendGraph(self, graph: ConnectivityGraph):
-		isInitialGraph = (len(self.times) == 0)
-		self.node
 		for node in graph.nodes:
 			temporalName = self._generateTemporalName(node, graph.timestamp)
-			self.add_node(temporalName)
+			self._addNode(temporalName, graph.timestamp)
 			GraphAlgorithms.cloneNodeProps(graph.nodes[node], self.nodes[temporalName])
 		for edge in graph.edges:
 			frm = self._generateTemporalName(edge[0], graph.timestamp)
 			to = self._generateTemporalName(edge[1], graph.timestamp)
-			self.add_edge(frm, to)
-		self.times.append(graph.timestamp)
-		if isInitialGraph: return
-		previousLayerTime = self.times[len(self.times) - 2]
-		for node in graph.nodes:
-			previousLayerNode = self._generateTemporalName(node, previousLayerTime)
-			previousLayerNodeRegion: PolygonalRegion = self.nodes[previousLayerNode]["region"]
-			if previousLayerNodeRegion.polygon.intersects(graph.nodes[node]["region"].polygon):
-				self._addTemporalEdge(previousLayerNode, temporalName)
+			self._addEdge(frm, to)
+		self.graphs.append(graph)
 		return
 
 	def _build(self, envMap: Map, fovs: List[Fov], validators: Dict[str, Validator], startInd = 0, endInd = None):
@@ -389,8 +400,7 @@ class ShadowTree(nx.DiGraph):
 				for sensorId in previousFov.sensors:
 					componentEvents = self._findIntermediateComponentEvents(previousFov.sensors[sensorId].region, currentFov.getEquivalentSensorById(sensorId).region, envMap)
 					self.componentEvents.append(componentEvents)
-					graphs = self._createConnectivityGraphPerEvent(envMap, componentEvents, validators, previousFov.time, currentFov.time)
-					self.graphs.append(graphs)
+					graphs = self._appendConnectivityGraphPerEvent(envMap, componentEvents, validators, previousFov.time, currentFov.time)
 					self._addTemporalEdges(graphs)
 		print("took %.2fms" % (time.time() - startTime))
 		return

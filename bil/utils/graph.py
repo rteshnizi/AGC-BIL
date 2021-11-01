@@ -1,5 +1,6 @@
 import networkx as nx
 import matplotlib.pyplot as plt
+import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from math import nan, isnan
 from queue import Queue
@@ -86,7 +87,7 @@ class GraphAlgorithms:
 			else:
 				redNodes.append(n)
 		if displayGeomGraph:
-			GraphAlgorithms.displayGeometricGraph(g, grnNodes, redNodes)
+			GraphAlgorithms.displayGeometricGraph(g)
 		if displaySpringGraph:
 			GraphAlgorithms.displaySpringGraph(g, grnNodes, redNodes, symNodes)
 
@@ -101,21 +102,19 @@ class GraphAlgorithms:
 				redNodesWithSymbols.append(symNode)
 		fig = plt.figure(len(GraphAlgorithms._allFigs))
 		GraphAlgorithms._allFigs.add(fig)
-		pos = nx.spring_layout(g)
+		pos = nx.kamada_kawai_layout(g)
+		# pos = nx.multipartite_layout(g, subset_key="timestamp", align="horizontal")
 		nx.draw_networkx_nodes(g, pos, nodelist=greenNodesWithSymbols, node_color="palegreen")
 		nx.draw_networkx_nodes(g, pos, nodelist=redNodesWithSymbols, node_color="tomato")
 		normalEdges = []
 		temporalEdges = []
 		for e in g.edges:
-			if "isTemporal" not in g.edges[e]:
-				normalEdges.append(e)
-			else:
+			if g.edges[e]["isTemporal"]:
 				temporalEdges.append(e)
-		nx.draw_networkx_edges(g, pos, edgelist=normalEdges, edge_color="black")
-		nx.draw_networkx_edges(g, pos, edgelist=temporalEdges, edge_color="green", width=3)
-		# normal edges
-		normalEdges = list(filter(lambda e: "isTemporal" not in  g.edges[e], g.edges))
-		nx.draw_networkx_edges(g, pos, edgelist=normalEdges)
+			else:
+				normalEdges.append(e)
+		nx.draw_networkx_edges(g, pos, edgelist=normalEdges, edge_color="blue")
+		nx.draw_networkx_edges(g, pos, edgelist=temporalEdges, edge_color="red", width=2)
 		nx.draw_networkx_labels(g, pos, font_family="DejaVu Sans", font_size=10)
 		plt.axis("off")
 		fig.show()
@@ -126,60 +125,46 @@ class GraphAlgorithms:
 		return (g.nodes[nodeName]["centroid"].x, g.nodes[nodeName]["centroid"].y, g.nodes[nodeName]["timestamp"])
 
 	@staticmethod
-	def displayGeometricGraph(g: nx.DiGraph, blueNodes, redNodes):
+	def displayGeometricGraph(g: nx.DiGraph):
 		fig = plt.figure(len(GraphAlgorithms._allFigs))
 		GraphAlgorithms._allFigs.add(fig)
 		ax = fig.gca(projection='3d')
-		xMap = []
-		yMap = []
-		zMap = []
+		xFov = []
+		xpFov = None
+		yFov = []
+		ypFov = None
+		zFov = []
+		zpFov = None
+		xSymbol = []
+		ySymbol = []
+		zSymbol = []
 		xShadow = []
 		yShadow = []
 		zShadow = []
-		xOther = []
-		yOther = []
-		zOther = []
-		labelsMap = []
-		labelsShadow = []
-		labelsOther = []
-		edgesToAdd = set()
 		for node in g.nodes:
-			if GraphAlgorithms.isBeamNode(node): continue
 			if "type" not in g.nodes[node]:
-				xOther.append(g.nodes[node]["centroid"].x)
-				labelsOther.append(node)
-				yOther.append(g.nodes[node]["centroid"].y)
-				zOther.append(g.nodes[node]["timestamp"])
+				raise "Graph node needs a type"
+			elif g.nodes[node]["type"] == "sensor":
+				(xFov, yFov) = g.nodes[node]["region"].polygon.exterior.coords.xy
+				zFov = [g.nodes[node]["timestamp"]] * len(xFov)
+				ax.plot(xFov, yFov, zFov, "g-")
+				ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["timestamp"], node, color="darkgreen")
+				if xpFov is not None:
+					for i in range(len(xFov) - 1):
+						ax.plot([xpFov[i], xFov[i]], [ypFov[i], yFov[i]], [zpFov[i], zFov[i]], "g-")
+				(xpFov, ypFov, zpFov) = (xFov, yFov, zFov)
+			elif g.nodes[node]["type"] == "symbol":
+				(xSymbol, ySymbol) = g.nodes[node]["region"].polygon.exterior.coords.xy
+				zSymbol = [g.nodes[node]["timestamp"]] * len(xSymbol)
+				ax.plot(xSymbol, ySymbol, zSymbol, "b-")
+				ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["timestamp"], node, color="darkblue")
 			elif g.nodes[node]["type"] == "shadow":
-				xShadow.append(g.nodes[node]["centroid"].x)
-				labelsShadow.append(node)
-				yShadow.append(g.nodes[node]["centroid"].y)
-				zShadow.append(g.nodes[node]["timestamp"])
+				(xShadow, yShadow) = g.nodes[node]["region"].polygon.exterior.coords.xy
+				zShadow = [g.nodes[node]["timestamp"]] * len(xShadow)
+				ax.plot(xShadow, yShadow, zShadow, "k-")
+				# ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["timestamp"], node, color="maroon")
 			else:
-				xMap.append(g.nodes[node]["centroid"].x)
-				labelsMap.append(node)
-				yMap.append(g.nodes[node]["centroid"].y)
-				zMap.append(g.nodes[node]["timestamp"])
-			for neighbor in g.adj[node]:
-				if GraphAlgorithms.isBeamNode(neighbor): continue
-				if g.nodes[node]["timestamp"] == g.nodes[neighbor]["timestamp"]: continue
-				higher = node if g.nodes[node]["timestamp"] > g.nodes[neighbor]["timestamp"] else neighbor
-				lower = node if higher != node else neighbor
-				edgesToAdd.add((GraphAlgorithms.getNodeCoordinates(g, lower), GraphAlgorithms.getNodeCoordinates(g, higher)))
-		ax.plot(xMap, yMap, zMap, "ro")
-		ax.plot(xShadow, yShadow, zShadow, "bo")
-		ax.plot(xOther, yOther, zOther, "go")
-		for e in edgesToAdd:
-			xs = [e[0][0], e[1][0]]
-			ys = [e[0][1], e[1][1]]
-			zs = [e[0][2], e[1][2]]
-			ax.plot(xs, ys, zs, "g-")
-		for i in range(len(labelsMap)):
-			ax.text(xMap[i], yMap[i], zMap[i], labelsMap[i], color="darkred")
-		for i in range(len(labelsShadow)):
-			ax.text(xShadow[i], yShadow[i], zShadow[i], labelsShadow[i], color="darkblue")
-		for i in range(len(labelsOther)):
-			ax.text(xOther[i], yOther[i], zOther[i], labelsOther[i], color="darkgreen")
+				raise "Unknown node type: %s" % g.nodes[node]["type"]
 		ax.autoscale()
 		fig.show()
 		return fig
