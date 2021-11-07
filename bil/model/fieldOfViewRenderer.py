@@ -5,35 +5,22 @@ class FieldOfViewRenderer:
 	Used for debug rendering ONLY
 	"""
 	def __init__(self):
-		self._previousFov = None
-		self._previousCGraph = None
-		# Utility variable to cache the cGraphs
-		self._cGraphCache = {}
+		self._previousCGraph: ConnectivityGraph = None
 
-	def render(self, envMap, fov, validators, canvas):
-		if self._previousFov is not None and self._previousFov.time != fov.time: self.clearRender(canvas)
-		for sensorId in fov.sensors:
-			sensor = fov.sensors[sensorId]
-			sensor.region.render(canvas)
-		cGraph = None
-		if fov.time not in self._cGraphCache:
-			cGraph = ConnectivityGraph(envMap, fov.polygon, fov.time, validators)
-			self._cGraphCache[fov.time] = cGraph
-		else:
-			cGraph = self._cGraphCache[fov.time]
+	def render(self, cGraph: ConnectivityGraph, canvas):
+		if self._previousCGraph is not None and self._previousCGraph.timestamp != cGraph.timestamp: self.clearRender(canvas)
+		for fov in cGraph.fovNodes:
+			cGraph.nodes[fov]["region"].render(canvas)
 		for shadowName in cGraph.shadowNodes:
 			shadowRegion = cGraph.nodes[shadowName]["region"]
 			shadowRegion.render(canvas)
-		self._previousFov = fov
 		self._previousCGraph = cGraph
 
 	def clearRender(self, canvas):
-		if self._previousFov is None: return
-		for sensorId in self._previousFov.sensors:
-			sensor = self._previousFov.sensors[sensorId]
-			sensor.region.clearRender(canvas)
+		if self._previousCGraph is None: return
+		for fov in self._previousCGraph.fovNodes:
+			self._previousCGraph.nodes[fov]["region"].clearRender(canvas)
 		for shadowName in self._previousCGraph.shadowNodes:
 			shadowRegion = self._previousCGraph.nodes[shadowName]["region"]
 			shadowRegion.clearRender(canvas)
-		self._previousFov = None
 		self._previousCGraph = None

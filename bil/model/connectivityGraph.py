@@ -24,6 +24,8 @@ class ConnectivityGraph(nx.DiGraph):
 		print("Building graph for %s" % self.timestamp)
 		self._build(fovUnion)
 		self._fig = None
+		# DEBUG MEMBERS
+		self.polygonsToDraw = []
 
 	def __repr__(self):
 		return "cGraph-%.2f" % self.timestamp
@@ -82,6 +84,8 @@ class ConnectivityGraph(nx.DiGraph):
 		return
 
 	def _updateShadows(self, newShadow: Polygon):
+		self._createNewShadow(newShadow)
+		return
 		if len(self.shadowNodes) == 0:
 			self._createNewShadow(newShadow)
 		else:

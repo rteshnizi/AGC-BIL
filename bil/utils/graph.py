@@ -102,7 +102,8 @@ class GraphAlgorithms:
 				redNodesWithSymbols.append(symNode)
 		fig = plt.figure(len(GraphAlgorithms._allFigs))
 		GraphAlgorithms._allFigs.add(fig)
-		pos = nx.kamada_kawai_layout(g)
+		pos = nx.kamada_kawai_layout(g, scale=-1)
+		# pos = nx.kamada_kawai_layout(g, weight="timestamp", scale=-1)
 		# pos = nx.multipartite_layout(g, subset_key="timestamp", align="horizontal")
 		nx.draw_networkx_nodes(g, pos, nodelist=greenNodesWithSymbols, node_color="palegreen")
 		nx.draw_networkx_nodes(g, pos, nodelist=redNodesWithSymbols, node_color="tomato")
@@ -148,7 +149,7 @@ class GraphAlgorithms:
 				(xFov, yFov) = g.nodes[node]["region"].polygon.exterior.coords.xy
 				zFov = [g.nodes[node]["timestamp"]] * len(xFov)
 				ax.plot(xFov, yFov, zFov, "g-")
-				ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["timestamp"], node, color="darkgreen")
+				# ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["timestamp"], node, color="darkgreen")
 				if xpFov is not None:
 					for i in range(len(xFov) - 1):
 						ax.plot([xpFov[i], xFov[i]], [ypFov[i], yFov[i]], [zpFov[i], zFov[i]], "g-")
@@ -157,7 +158,7 @@ class GraphAlgorithms:
 				(xSymbol, ySymbol) = g.nodes[node]["region"].polygon.exterior.coords.xy
 				zSymbol = [g.nodes[node]["timestamp"]] * len(xSymbol)
 				ax.plot(xSymbol, ySymbol, zSymbol, "b-")
-				ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["timestamp"], node, color="darkblue")
+				# ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["timestamp"], node, color="darkblue")
 			elif g.nodes[node]["type"] == "shadow":
 				(xShadow, yShadow) = g.nodes[node]["region"].polygon.exterior.coords.xy
 				zShadow = [g.nodes[node]["timestamp"]] * len(xShadow)

@@ -11,8 +11,12 @@ class Pose:
 		self.spawn = False
 		self.vanished = False
 
-	def __repr__(self):
-		if self.spawn and self.vanished: return "%s(%.2f, %.2f, %.2f)" % ("+/- ", self.time, self.x, self.y)
-		if self.spawn: return "%s(%.2f, %.2f, %.2f)" % ("+ ", self.time, self.x, self.y)
-		if self.vanished: return "%s(%.2f, %.2f, %.2f)" % ("- ", self.time, self.x, self.y)
+	def _bareRepr(self):
 		return "(%.2f, %.2f, %.2f)" % (self.time, self.x, self.y)
+
+	def __repr__(self):
+		s = self._bareRepr()
+		if self.spawn and self.vanished: return "%s%s" % ("+/- ", s)
+		if self.spawn: return "%s%s" % ("+ ", s)
+		if self.vanished: return "%s%s" % ("- ", s)
+		return s

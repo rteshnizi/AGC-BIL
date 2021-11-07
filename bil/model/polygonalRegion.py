@@ -52,13 +52,13 @@ class PolygonalRegion:
 	def isInsideRegion(self, x, y):
 		return Geometry.isXyInsidePolygon(x, y, self.polygon)
 
-	def getEquivalentEdge(self, finalConfig: LineString, transformation: transform.AffineTransform) -> LineString:
+	def getEquivalentEdge(self, finalConfig: LineString, transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords) -> LineString:
 		"""
 			Given an affine transformation, and the final configuration of an edge after the transformation,
 			find the edge that will be in that final configuration after the transformation, and `None` otherwise. Boy didn't I repeat myself?!
 		"""
 		for edge in self.edges.values():
-			afterTransformation = Geometry.applyMatrixTransformToLineString(transformation, edge)
+			afterTransformation = Geometry.applyMatrixTransformToLineString(transformation, edge, centerOfRotation)
 			if Geometry.lineSegmentsAreAlmostEqual(finalConfig, afterTransformation): return edge
 		return None
 

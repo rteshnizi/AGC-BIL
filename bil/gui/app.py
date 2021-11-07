@@ -102,10 +102,7 @@ class App(tk.Frame):
 	@property
 	def _maxEventIndex(self):
 		if self.shadowTree is None: return 0
-		l = 0
-		for eventCandidates in self.shadowTree.componentEvents:
-			l += len(eventCandidates)
-		return l
+		return len(self.shadowTree.graphs) - 1
 
 	@property
 	def _eventLabelText(self):
@@ -117,22 +114,20 @@ class App(tk.Frame):
 		self._renderEvents()
 
 	def _clearEvents(self, force=False):
-		if self.shadowTree is None: return
-		if len(self._eventDrawingId) == 0: return
-		if not force and self._dbg["Show Event"].get() == 1: return
-		[Drawing.RemoveShape(self.canvas.tkCanvas, id) for id in self._eventDrawingId]
-		self._eventDrawingId = []
+		self.fovRenderer.clearRender(self.canvas.tkCanvas)
+		# if self.shadowTree is None: return
+		# if len(self._eventDrawingId) == 0: return
+		# if not force and self._dbg["Show Event"].get() == 1: return
+		# [Drawing.RemoveShape(self.canvas.tkCanvas, id) for id in self._eventDrawingId]
+		# self._eventDrawingId = []
 
 	def _renderEvents(self):
 		if self.shadowTree is None: return
+		if not self.shouldRenderEvent: return
+		self._clearFov()
 		self.eventLabel.set(self._eventLabelText)
-		for eventCandidates in self.shadowTree.componentEvents:
-			for eventCandidate in eventCandidates:
-				color = "RED" if eventCandidate[2] == "ingoing" else "BLUE"
-				self._eventDrawingId = self._eventDrawingId + [
-					Drawing.CreatePolygon(self.canvas.tkCanvas, eventCandidate[0].exterior.coords, color, "", 1, color),
-					Drawing.CreateLine(self.canvas.tkCanvas, eventCandidate[3].coords, "PURPLE", "", 2)
-				]
+		cGraph = self.shadowTree.graphs[self._eventIndex]
+		self.fovRenderer.render(cGraph, self.canvas.tkCanvas)
 
 	def _changeEvent(self, showNext: bool):
 		self._clearEvents(force=True)
@@ -157,7 +152,9 @@ class App(tk.Frame):
 
 	def _renderFov(self):
 		if not self.shouldShowFOV: return
-		self.fovRenderer.render(self.bil.map, self.observationToRender.fov, self.spec.validators, self.canvas.tkCanvas)
+		self._clearEvents(force=True)
+		cGraph = ConnectivityGraph(self.bil.map, self.observationToRender.fov.polygon, self.observationToRender.time, self.spec.validators)
+		self.fovRenderer.render(cGraph, self.canvas.tkCanvas)
 
 	def _changeFov(self, showNext: bool):
 		self._clearFov()
@@ -177,6 +174,10 @@ class App(tk.Frame):
 	def _onSpecChange(self, event):
 		self._clearSpec()
 		self._renderSpec()
+
+	@property
+	def shouldRenderEvent(self) -> bool:
+		return self._dbg["Show Event"].get() == 1
 
 	@property
 	def shouldRenderTrajectory(self) -> bool:
@@ -223,14 +224,12 @@ class App(tk.Frame):
 			nextIndex = self._fovIndex + 1
 		fovs = [self.bil.observations.getObservationByIndex(previousIndex).fov, self.bil.observations.getObservationByIndex(nextIndex).fov]
 		self.shadowTree = ShadowTree(self.bil.map, fovs, self.spec.validators)
-		# for i in range(len(self.shadowTree.graphs)):
-		# 	graphs = self.shadowTree.graphs[i]
-		# 	for graph in graphs:
-		# 		graph.displayGraph(self.displayGeomGraph, self.displaySpringGraph)
 		self.shadowTree.displayGraph(self.displayGeomGraph, self.displaySpringGraph)
 
 	def chainAll(self):
-		GraphAlgorithms.displayGraphAuto(self.bil.fieldOfView.chainedGraphThroughTime(self.spec), displayGeomGraph=self.displayGeomGraph, displaySpringGraph=self.displaySpringGraph)
+		fovs = [self.bil.observations[o].fov for o in self.bil.observations]
+		self.shadowTree = ShadowTree(self.bil.map, fovs, self.spec.validators)
+		self.shadowTree.displayGraph(self.displayGeomGraph, self.displaySpringGraph)
 
 	def _createButton(self, row, col, text, callback, textVariable=None):
 		tk.Grid.columnconfigure(self.frame, col, weight=1)

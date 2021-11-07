@@ -42,6 +42,30 @@ class ShadowTree(nx.DiGraph):
 		(lower, upper) = self._getLowerAndUpperNode(n1, n2)
 		self.add_edge(lower, upper, isTemporal=isTemporal)
 
+	def _shadowsAreConnectedTemporally(self, previousGraph: ConnectivityGraph, currentGraph: ConnectivityGraph, previousShadow: dict, currentShadow: dict, centerOfRotation: Geometry.Coords):
+		"""
+			With the assumption that previousNode and currentNode intersect,
+			 1. takes the intersection
+			 2. picks one vertex from the intersection
+			 3. finds the polygon made by the translation of each edge
+			 4. if the vertex falls inside the polygon then there should not be a temporal edge
+		"""
+		previousP: Polygon = previousShadow["region"].polygon
+		currentP: Polygon = currentShadow["region"].polygon
+		intersectionOfShadows: Polygon = previousP.intersection(currentP)
+		candidateVertex: Geometry.Coords = intersectionOfShadows.exterior.coords[0]
+		for fov in previousGraph.fovNodes:
+			previousFovRegion: SensingRegion = previousGraph.nodes[fov]["region"]
+			currentFovRegion: SensingRegion = currentGraph.nodes[fov]["region"]
+			transformation: transform.AffineTransform = Geometry.getAffineTransformation(previousFovRegion.polygon, currentFovRegion.polygon, centerOfRotation)
+			for e in currentFovRegion.edges:
+				edgeC = currentFovRegion.edges[e]
+				edgeP = previousFovRegion.getEquivalentEdge(edgeC, transformation, centerOfRotation)
+				polygon = Polygon([edgeC.coords[0], edgeC.coords[1], edgeP.coords[1], edgeP.coords[0]])
+				if Geometry.isXyInsidePolygon(candidateVertex[0], candidateVertex[1], polygon):
+					return False
+		return True
+
 	def _checkChangesInCollidingEdges(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon, envMap: Map) -> Tuple[bool, Set[Geometry.CoordsList], Set[Geometry.CoordsList]]:
 		"""
 			Takes two connectivity graphs and looks at their respective FOVs
@@ -262,7 +286,7 @@ class ShadowTree(nx.DiGraph):
 					i += 1
 		return (ingoingIntervals, outgoingIntervals)
 
-	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, envMap: Map) -> Tuple[Polygon, float, str, LineString]:
+	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, centerOfRotation: Geometry.Coords, envMap: Map) -> Tuple[Polygon, float, str, LineString]:
 		"""
 			Given the original configuration of the FOV (`previousSensor`) and the final configuration (`currentSensor`)
 			find all the times where there is a shadow component event.
@@ -271,7 +295,6 @@ class ShadowTree(nx.DiGraph):
 			#### Returns
 			A list of intermediate between which there is at most one component event.
 		"""
-		centerOfRotation = previousSensor.polygon.exterior.coords[3] # FIXME: Hard coded value
 		transformation = Geometry.getAffineTransformation(previousSensor.polygon, currentSensor.polygon, centerOfRotation)
 		previousCollidingEdges = self._getCollidingEdgesByEdge(previousSensor, envMap)
 		currentCollidingEdges = self._getCollidingEdgesByEdge(currentSensor, envMap)
@@ -340,11 +363,12 @@ class ShadowTree(nx.DiGraph):
 	def _appendConnectivityGraphPerEvent(self, envMap: Map, events: Tuple[Polygon, float, str, LineString], validators: Dict[str, Validator], startTime: float, endTime: float):
 		graphs = []
 		for event in events:
-			graph = ConnectivityGraph(envMap, event[0], ((event[1] * (endTime - startTime)) + startTime), validators)
+			time = ((event[1] * (endTime - startTime)) + startTime)
+			graph = ConnectivityGraph(envMap, event[0], time, validators)
 			graphs.append(graph)
 		return graphs
 
-	def _addTemporalEdges(self, eventGraphs: List[ConnectivityGraph]):
+	def _addTemporalEdges(self, eventGraphs: List[ConnectivityGraph], centerOfRotation: Geometry.Coords):
 		for graph in eventGraphs:
 			isInitialGraph = (len(self.graphs) == 0)
 			self._appendGraph(graph)
@@ -366,9 +390,10 @@ class ShadowTree(nx.DiGraph):
 					previousShadowNodeRegion = previousGraph.nodes[shadowNodeInPreviousGraph]["region"]
 					currentShadowNodeRegion = graph.nodes[shadowNodeInCurrentGraph]["region"]
 					if previousShadowNodeRegion.polygon.intersects(currentShadowNodeRegion.polygon):
-						shadowNodeInShadowTree = self._generateTemporalName(shadowNodeInPreviousGraph, previousGraph.timestamp)
-						shadowNodeInCurrentGraph = self._generateTemporalName(shadowNodeInCurrentGraph, graph.timestamp)
-						self._addEdge(shadowNodeInShadowTree, shadowNodeInCurrentGraph, isTemporal=True)
+						if self._shadowsAreConnectedTemporally(previousGraph, graph, previousGraph.nodes[shadowNodeInPreviousGraph], graph.nodes[shadowNodeInCurrentGraph], centerOfRotation):
+							shadowNodeInShadowTree = self._generateTemporalName(shadowNodeInPreviousGraph, previousGraph.timestamp)
+							shadowNodeInCurrentGraph = self._generateTemporalName(shadowNodeInCurrentGraph, graph.timestamp)
+							self._addEdge(shadowNodeInShadowTree, shadowNodeInCurrentGraph, isTemporal=True)
 		return
 
 	def _appendGraph(self, graph: ConnectivityGraph):
@@ -398,21 +423,16 @@ class ShadowTree(nx.DiGraph):
 				previousFov = currentFov
 			else:
 				for sensorId in previousFov.sensors:
-					componentEvents = self._findIntermediateComponentEvents(previousFov.sensors[sensorId].region, currentFov.getEquivalentSensorById(sensorId).region, envMap)
+					previousSensor = previousFov.sensors[sensorId]
+					currentSensor = currentFov.getEquivalentSensorById(sensorId)
+					centerOfRotation = (previousSensor.pose.x, previousSensor.pose.y)
+					componentEvents = self._findIntermediateComponentEvents(previousSensor.region, currentSensor.region, centerOfRotation, envMap)
 					self.componentEvents.append(componentEvents)
 					graphs = self._appendConnectivityGraphPerEvent(envMap, componentEvents, validators, previousFov.time, currentFov.time)
-					self._addTemporalEdges(graphs)
+					self._addTemporalEdges(graphs, centerOfRotation)
+				previousFov = currentFov
 		print("took %.2fms" % (time.time() - startTime))
 		return
-
-	def getTemporalNeighbors(self, node: str, nodeLayerIndex: int = 0):
-		timedName = GraphAlgorithms._getTimedNodeName(node, self._timeStamps[nodeLayerIndex])
-		neighbors = set()
-		for outEdge in self.out_edges(timedName):
-			neighbor = outEdge[1]
-			if not self.get_edge_data(outEdge[0], outEdge[1])["isTemporal"]: continue
-			neighbors.add(neighbor)
-		return neighbors
 
 	def displayGraph(self, displayGeomGraph, displaySpringGraph):
 		self._fig = GraphAlgorithms.displayGraphAuto(self, displayGeomGraph, displaySpringGraph)
