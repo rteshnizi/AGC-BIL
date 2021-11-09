@@ -20,6 +20,7 @@ class ShadowTree(nx.DiGraph):
 		super().__init__()
 		self.MIN_TIME_DELTA = 1E-2
 		self._fig = None
+		# The reason this is a list of lists is that the time of event is relative to the time between
 		self.componentEvents: List[List[Polygon]] = []
 		self.graphs: List[ConnectivityGraph] = []
 
@@ -427,7 +428,7 @@ class ShadowTree(nx.DiGraph):
 					currentSensor = currentFov.getEquivalentSensorById(sensorId)
 					centerOfRotation = (previousSensor.pose.x, previousSensor.pose.y)
 					componentEvents = self._findIntermediateComponentEvents(previousSensor.region, currentSensor.region, centerOfRotation, envMap)
-					self.componentEvents.append(componentEvents)
+					self.componentEvents = self.componentEvents + componentEvents
 					graphs = self._appendConnectivityGraphPerEvent(envMap, componentEvents, validators, previousFov.time, currentFov.time)
 					self._addTemporalEdges(graphs, centerOfRotation)
 				previousFov = currentFov
