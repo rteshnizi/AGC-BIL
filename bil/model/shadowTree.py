@@ -49,9 +49,9 @@ class ShadowTree(nx.DiGraph):
 		"""
 			With the assumption that previousNode and currentNode intersect,
 			 1. takes the intersection
-			 2. picks one vertex from the intersection
-			 3. finds the polygon made by the translation of each edge
-			 4. if the vertex falls inside the polygon then there should not be a temporal edge
+			 2. finds the polygon made by the translation of each edge
+			 3. takes the union of those polygons to get the area swept by FOV
+			 4. if the intersection has areas that are not swept by FOV, then they are connected
 		"""
 		previousP: Polygon = previousShadow["region"].polygon
 		currentP: Polygon = currentShadow["region"].polygon
