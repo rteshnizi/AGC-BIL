@@ -42,8 +42,8 @@ class App(tk.Frame):
 		self.specDropdownValue.set("simple-1") # set the default option
 		self._dbg = {
 			"Render Trajectory": tk.IntVar(master=self.master, value=1),
-			"Display Geom Graph": tk.IntVar(master=self.master, value=1),
-			"Display Spring Graph": tk.IntVar(master=self.master, value=0),
+			"Display Geom Graph": tk.IntVar(master=self.master, value=0),
+			"Display Spring Graph": tk.IntVar(master=self.master, value=1),
 			"Show FOV": tk.IntVar(master=self.master, value=0),
 			"Show Event": tk.IntVar(master=self.master, value=0),
 		}
@@ -225,6 +225,10 @@ class App(tk.Frame):
 		fovs = [self.bil.observations.getObservationByIndex(previousIndex).fov, self.bil.observations.getObservationByIndex(nextIndex).fov]
 		self.shadowTree = ShadowTree(self.bil.map, fovs, self.spec.validators)
 		self.shadowTree.displayGraph(self.displayGeomGraph, self.displaySpringGraph)
+		[Drawing.CreatePolygon(self.canvas.tkCanvas, list(p.exterior.coords), "RED", "", 2, "RED-P") for p in self.shadowTree.redPolys]
+		[Drawing.CreatePolygon(self.canvas.tkCanvas, list(p.exterior.coords), "BLUE", "", 2, "BLUE-P") for p in self.shadowTree.bluePolys]
+		# Drawing.CreateCircle(self.canvas.tkCanvas, self.shadowTree.blueVert[0], self.shadowTree.blueVert[1], 3, "BLUE", "VV")
+		[Drawing.CreateLine(self.canvas.tkCanvas, list(l.coords), "MAROON", "LL", 2) for l in self.shadowTree.lines]
 
 	def chainAll(self):
 		fovs = [self.bil.observations[o].fov for o in self.bil.observations]

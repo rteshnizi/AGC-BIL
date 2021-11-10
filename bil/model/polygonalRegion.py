@@ -62,7 +62,6 @@ class PolygonalRegion:
 			if Geometry.lineSegmentsAreAlmostEqual(finalConfig, afterTransformation): return edge
 		return None
 
-
 	def intersectsRegion(self, other: "PolygonalRegion"):
 		return Geometry.polygonAndPolygonIntersect(self.polygon, other.polygon)
 

@@ -1,11 +1,9 @@
-from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.sensingRegion import SensingRegion
 import networkx as nx
 from shapely.geometry import LineString, Point, Polygon
 from skimage import transform
 import time
 from typing import List, Set, Dict, Tuple
-from math import inf
 
 from bil.model.connectivityGraph import ConnectivityGraph
 from bil.model.map import Map
@@ -23,6 +21,10 @@ class ShadowTree(nx.DiGraph):
 		# The reason this is a list of lists is that the time of event is relative to the time between
 		self.componentEvents: List[List[Polygon]] = []
 		self.graphs: List[ConnectivityGraph] = []
+		# Used for debugging
+		self.redPolys: List[Polygon] = []
+		self.bluePolys: List[Polygon] = []
+		self.lines: List[LineString] = []
 
 		print("Connecting Graphs through time...")
 		self._build(envMap, fovs, validators, startInd, endInd)
@@ -54,62 +56,21 @@ class ShadowTree(nx.DiGraph):
 		previousP: Polygon = previousShadow["region"].polygon
 		currentP: Polygon = currentShadow["region"].polygon
 		intersectionOfShadows: Polygon = previousP.intersection(currentP)
-		candidateVertex: Geometry.Coords = intersectionOfShadows.exterior.coords[0]
 		for fov in previousGraph.fovNodes:
 			previousFovRegion: SensingRegion = previousGraph.nodes[fov]["region"]
 			currentFovRegion: SensingRegion = currentGraph.nodes[fov]["region"]
 			transformation: transform.AffineTransform = Geometry.getAffineTransformation(previousFovRegion.polygon, currentFovRegion.polygon, centerOfRotation)
+			ps = []
 			for e in currentFovRegion.edges:
 				edgeC = currentFovRegion.edges[e]
 				edgeP = previousFovRegion.getEquivalentEdge(edgeC, transformation, centerOfRotation)
-				polygon = Polygon([edgeC.coords[0], edgeC.coords[1], edgeP.coords[1], edgeP.coords[0]])
-				if Geometry.isXyInsidePolygon(candidateVertex[0], candidateVertex[1], polygon):
-					return False
-		return True
-
-	def _checkChangesInCollidingEdges(self, previousFovPolygon: Polygon, currentFovPolygon: Polygon, envMap: Map) -> Tuple[bool, Set[Geometry.CoordsList], Set[Geometry.CoordsList]]:
-		"""
-			Takes two connectivity graphs and looks at their respective FOVs
-			to see if the edges of the FOV that collides crosses a different set of edges of the map's boundary.
-
-			#### Return
-			A tuple with three elements:
-				(Whether the edges are the same or neighboring,
-				The edges hitting the previous FOV configuration,
-				The edges hitting the current FOV configuration)
-		"""
-		fovVerts = list(previousFovPolygon.exterior.coords)
-		previousEdges = set()
-		for v1, v2 in zip(fovVerts, fovVerts[1:]):
-			line = LineString([v1, v2])
-			edges = Geometry.getAllIntersectingEdgesWithLine(line, envMap.polygon)
-			previousEdges.update(edges)
-		fovVerts = list(currentFovPolygon.exterior.coords)
-		currentEdges = set()
-		for v1, v2 in zip(fovVerts, fovVerts[1:]):
-			line = LineString([v1, v2])
-			edges = Geometry.getAllIntersectingEdgesWithLine(line, envMap.polygon)
-			currentEdges.update(edges)
-		prevHash = [Geometry.coordListStringId(edge) for edge in previousEdges]
-		currHash = [Geometry.coordListStringId(edge) for edge in currentEdges]
-		edgesAreTheSame = prevHash == currHash
-		if edgesAreTheSame: return (True, previousEdges, currentEdges)
-		# # Are they almost the same (neighboring)
-		# for edge1coords in previousEdges:
-		# 	pts1Set = set(edge1coords)
-		# 	for edge2coords in currentEdges:
-		# 		pts2Set = set(edge2coords)
-		# 		coordsInCommon = pts1Set.intersection(pts2Set)
-		# 		# Common edge doesn't count
-		# 		if len(coordsInCommon) == 0:
-		# 			continue
-		# 		if len(coordsInCommon) == 2:
-		# 			break
-		# 		if len(coordsInCommon) == 1:
-		# 			# There is a neghboring edge
-		# 			return (True, previousEdges, currentEdges)
-		# 		raise("Past Reza said, check when does this happen")
-		return (False, previousEdges, currentEdges)
+				polygon = Polygon([edgeP.coords[0], edgeP.coords[1], edgeC.coords[1], edgeC.coords[0]])
+				ps.append(polygon)
+			u = Geometry.union(ps)
+			p = intersectionOfShadows.difference(u)
+			if p.area > 0.01:
+				return True
+		return False
 
 	def _getCollidingEdgesByEdge(self, sensor: SensingRegion, envMap: Map) -> Dict[str, Set[LineString]]:
 		collisionData = {}
@@ -256,28 +217,26 @@ class ShadowTree(nx.DiGraph):
 				intervals.append((sensorEdge, mapEdge, 0, 1))
 		return intervals
 
-	def _findEventIntervalsForCollisions(self, previousSensor: SensingRegion, collisionIntervals: Dict[str, Set[LineString]], transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords):
+	def _findEventIntervalsForCollisions(self, previousSensor: SensingRegion, collisionIntervals: Dict[str, Set[LineString]], transformation: transform.AffineTransform, centerOfRotation: Geometry.Coords, ingoingIntervals: list, outgoingIntervals: list):
 		i = 0
 		while i < len(collisionIntervals):
 			(sensorEdge, mapEdge, intervalStart, intervalEnd) = collisionIntervals.pop(i)
 			# Epsilon for shard search
 			deltaT = intervalEnd - intervalStart
-			ingoingIntervals = []
-			outgoingIntervals = []
 			if deltaT <= self.MIN_TIME_DELTA:
 				continue
 			((isCollidingAtStart, isCollidingAtMid, isCollidingAtEnd), firstHalfBb, secondHalfBb, edgeAtMid) = self._checkBoundingBoxIntervalForCollision(previousSensor, sensorEdge, mapEdge, transformation, centerOfRotation, intervalStart, intervalEnd)
 			intervalMid = (intervalStart + intervalEnd) / 2
 			if isCollidingAtStart != isCollidingAtMid:
 				if isCollidingAtStart and not isCollidingAtMid:
-					outgoingIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+					outgoingIntervals.append((sensorEdge, mapEdge, intervalStart, intervalMid))
 				else:
-					ingoingIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+					ingoingIntervals.append((sensorEdge, mapEdge, intervalStart, intervalMid))
 			if isCollidingAtMid != isCollidingAtEnd:
 				if isCollidingAtMid and not isCollidingAtEnd:
-					outgoingIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+					outgoingIntervals.append((sensorEdge, mapEdge, intervalStart, intervalMid))
 				else:
-					ingoingIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+					ingoingIntervals.append((sensorEdge, mapEdge, intervalStart, intervalMid))
 			if isCollidingAtStart == isCollidingAtMid and isCollidingAtMid == isCollidingAtEnd:
 				if firstHalfBb.intersects(mapEdge):
 					collisionIntervals.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
@@ -285,7 +244,7 @@ class ShadowTree(nx.DiGraph):
 				if secondHalfBb.intersects(mapEdge):
 					collisionIntervals.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
 					i += 1
-		return (ingoingIntervals, outgoingIntervals)
+		return
 
 	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, centerOfRotation: Geometry.Coords, envMap: Map) -> Tuple[Polygon, float, str, LineString]:
 		"""
@@ -307,11 +266,12 @@ class ShadowTree(nx.DiGraph):
 		for id in currentCollidingEdges:
 			for l in currentCollidingEdges[id]:
 				if id in intermediateCollisions: intermediateCollisions[id].remove(l)
-				# if id in intermediateCollisions: intermediateCollisions[id].remove(l)
 		collisionIntervals = self._initColissionIntervals(previousSensor, intermediateCollisions)
+		# [self.lines.append(e[1]) for e in collisionIntervals]
 
+		(ingoingIntervals, outgoingIntervals) = ([], [])
 		while len(collisionIntervals) > 0:
-			(ingoingIntervals, outgoingIntervals) = self._findEventIntervalsForCollisions(previousSensor, collisionIntervals, transformation, centerOfRotation)
+			self._findEventIntervalsForCollisions(previousSensor, collisionIntervals, transformation, centerOfRotation, ingoingIntervals, outgoingIntervals)
 		# Each interval is represented as a tuple: (sensorEdge, mapEdge, float, float)
 		# The first float is the interval start and the second one is interval end times.
 		intervals = self._initEdgeIntervals(previousSensor, transformation, centerOfRotation, previousCollidingEdges, inverse=False)
@@ -357,7 +317,17 @@ class ShadowTree(nx.DiGraph):
 				intermediateTransform = Geometry.getParameterizedAffineTransformation(transformation, interval[3])
 				p = Geometry.applyMatrixTransformToPolygon(intermediateTransform, previousSensor.polygon, centerOfRotation)
 				eventCandidates.append((p, interval[3], "ingoing", interval[1]))
+		# Sort events by time
 		eventCandidates.sort(key=lambda e: e[1])
+		# Remove duplicate times
+		times = set()
+		i = 0
+		while i < len(eventCandidates):
+			if eventCandidates[i][1] not in times:
+				times.add(eventCandidates[i][1])
+				i += 1
+			else:
+				eventCandidates.pop(i)
 		# (FOV polygon, timeofEvent, "ingoing" | "outgoing", map edge relevant to the event)
 		return eventCandidates
 

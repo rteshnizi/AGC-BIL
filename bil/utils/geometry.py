@@ -141,6 +141,9 @@ class Geometry:
 
 	@staticmethod
 	def isPointInsidePolygon(pt: Point, polygon: Polygon) -> bool:
+		# FIXME: Because of numerical errors, we can rely on contains
+		# So if the point is contained and the distance from exterior is minimal
+		# return polygon.contains(pt) and polygon.boundary.distance(pt) > Geometry.EPSILON
 		return polygon.contains(pt)
 
 	@staticmethod
