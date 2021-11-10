@@ -428,7 +428,7 @@ class ShadowTree(nx.DiGraph):
 					currentSensor = currentFov.getEquivalentSensorById(sensorId)
 					centerOfRotation = (previousSensor.pose.x, previousSensor.pose.y)
 					componentEvents = self._findIntermediateComponentEvents(previousSensor.region, currentSensor.region, centerOfRotation, envMap)
-					self.componentEvents = self.componentEvents + componentEvents
+					self.componentEvents.append(componentEvents)
 					graphs = self._appendConnectivityGraphPerEvent(envMap, componentEvents, validators, previousFov.time, currentFov.time)
 					self._addTemporalEdges(graphs, centerOfRotation)
 				previousFov = currentFov

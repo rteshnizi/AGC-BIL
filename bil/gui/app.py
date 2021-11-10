@@ -31,10 +31,10 @@ class App(tk.Frame):
 		super().__init__(self.master)
 		self.fovLabel = tk.StringVar(master=self.master)
 		self._fovIndex = 0
+		self.fovLabel.set(self._fovLabelText)
 		self.eventLabel = tk.StringVar(master=self.master)
 		self._eventIndex = 0
 		self._eventDrawingId = []
-		self.fovLabel.set(self._fovLabelText)
 		self.validationBtnLabel = tk.StringVar(master=self.master)
 		self._validationIndex = 0
 		self.validationBtnLabel.set(self._validationBtnLabelText)

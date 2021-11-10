@@ -1,3 +1,4 @@
+from bil.gui.drawing import Drawing
 from bil.model.connectivityGraph import ConnectivityGraph
 
 class FieldOfViewRenderer:
@@ -6,6 +7,7 @@ class FieldOfViewRenderer:
 	"""
 	def __init__(self):
 		self._previousCGraph: ConnectivityGraph = None
+		self._timeLabelCanvasId = None
 
 	def render(self, cGraph: ConnectivityGraph, canvas):
 		if self._previousCGraph is not None and self._previousCGraph.timestamp != cGraph.timestamp: self.clearRender(canvas)
@@ -14,6 +16,9 @@ class FieldOfViewRenderer:
 		for shadowName in cGraph.shadowNodes:
 			shadowRegion = cGraph.nodes[shadowName]["region"]
 			shadowRegion.render(canvas)
+		timeStr = "N/A" if cGraph is None else "%.2f" % cGraph.timestamp
+		labelStr = "t = %s" % timeStr
+		self._timeLabelCanvasId = Drawing.CreateText(canvas, [-2, -5], labelStr, "TIME-LABEL")
 		self._previousCGraph = cGraph
 
 	def clearRender(self, canvas):
@@ -23,4 +28,6 @@ class FieldOfViewRenderer:
 		for shadowName in self._previousCGraph.shadowNodes:
 			shadowRegion = self._previousCGraph.nodes[shadowName]["region"]
 			shadowRegion.clearRender(canvas)
+		Drawing.RemoveShape(canvas, self._timeLabelCanvasId)
+		self._timeLabelCanvasId = None
 		self._previousCGraph = None

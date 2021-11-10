@@ -26,7 +26,7 @@ class Geometry:
 	@staticmethod
 	def coordsAreAlmostEqual(coords1: Coords, coords2: Coords) -> bool:
 		d1 = Geometry.distance(coords1[0], coords1[1], coords2[0], coords2[1])
-		return d1 <= 0.1 # EPSILON is too large unfortunately
+		return d1 <= 0.35 # FIXME: EPSILON is too small unfortunately
 
 	@staticmethod
 	def lineSegmentsAreAlmostEqual(l1: LineString, l2: LineString) -> bool:
