@@ -3,6 +3,7 @@
         "fovs",
         "heapify",
         "heapq",
+        "networkx",
         "Reza",
         "Slerp",
         "Tianqi",

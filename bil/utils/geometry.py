@@ -256,8 +256,8 @@ class Geometry:
 		This one will iterate over all of the boundary edges check if lines are parallel and sees if the distance is minimal.
 		"""
 		shapelyIntersectionCheck = Geometry._haveOverlappingEdge(p1, p2)
-		if p1.distance(p2) > 0: return False # This is an important optimization. The process below is time consuming
 		if shapelyIntersectionCheck: return True
+		if p1.distance(p2) > Geometry.EPSILON: return False # This is an important optimization. The process below is time consuming
 		lineSegments1 = list(map(LineString, zip(p1.exterior.coords[:-1], p1.exterior.coords[1:])))
 		lineSegments2 = list(map(LineString, zip(p2.exterior.coords[:-1], p2.exterior.coords[1:])))
 		for lineSeg1 in lineSegments1:

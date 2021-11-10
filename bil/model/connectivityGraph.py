@@ -23,7 +23,7 @@ class ConnectivityGraph(nx.DiGraph):
 		self.timestamp = timestamp
 		print("Building graph for %s" % self.timestamp)
 		self._build(fovUnion)
-		self._fig = None
+		self._fig1 = None
 		# DEBUG MEMBERS
 		self.polygonsToDraw = []
 
@@ -83,21 +83,6 @@ class ConnectivityGraph(nx.DiGraph):
 		self.nodes[existingShadow.name]["centroid"] = region.polygon.centroid
 		return
 
-	def _updateShadows(self, newShadow: Polygon):
-		self._createNewShadow(newShadow)
-		return
-		if len(self.shadowNodes) == 0:
-			self._createNewShadow(newShadow)
-		else:
-			beforeUpdate = self.shadowNodes.copy()
-			for existingShadowName in beforeUpdate:
-				existingShadow = self.nodes[existingShadowName]["region"]
-				if Geometry.haveOverlappingEdge(existingShadow.polygon, newShadow):
-					self._mergeShadow(existingShadow, newShadow)
-				else:
-					self._createNewShadow(newShadow)
-		return
-
 	def _constructShadows(self, fovUnion: Union[Polygon, MultiPolygon]):
 		allShadowPolygons = []
 		for regionName in self.map.regions:
@@ -111,7 +96,7 @@ class ConnectivityGraph(nx.DiGraph):
 				allShadowPolygons.append(mapR.polygon)
 		mergedPolys = Geometry.union(allShadowPolygons)
 		for shadow in mergedPolys:
-			self._updateShadows(shadow)
+			self._createNewShadow(shadow)
 		return
 
 	def _addSymbols(self, fovUnion: Union[Polygon, MultiPolygon]):
@@ -160,12 +145,15 @@ class ConnectivityGraph(nx.DiGraph):
 
 	def displayGraph(self, displayGeomGraph, displaySpringGraph):
 		if displayGeomGraph:
-			self._fig = GraphAlgorithms.displayGeometricGraph(self, self.fovNodes, self.shadowNodes)
-		else:
-			self._fig = GraphAlgorithms.displaySpringGraph(self, self.fovNodes, self.shadowNodes, self.symbolNodes)
+			self._figGeom = GraphAlgorithms.displayGeometricGraph(self)
+		if displaySpringGraph:
+			self._figGraph = GraphAlgorithms.displaySpringGraph(self, self.fovNodes, self.shadowNodes, self.symbolNodes)
 		return
 
 	def killDisplayedGraph(self):
-		if self._fig:
-			GraphAlgorithms.killDisplayedGraph(self._fig)
-			self._fig = None
+		if self._figGeom:
+			GraphAlgorithms.killDisplayedGraph(self._figGeom)
+			self._figGeom = None
+		if self._figGraph:
+			GraphAlgorithms.killDisplayedGraph(self._figGraph)
+			self._figGraph = None

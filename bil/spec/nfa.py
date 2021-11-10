@@ -133,17 +133,19 @@ class NFA(nx.DiGraph):
 	def displayGraph(self):
 		fig = plt.figure(len(GraphAlgorithms._allFigs))
 		GraphAlgorithms._allFigs.add(fig)
-		pos = nx.spring_layout(self)
+		pos = nx.circular_layout(self)
 		activeStates = { penny.state for penny in self.activeStates }
 		inactiveStates = set(self.nodes) - activeStates
-		nx.draw_networkx_nodes(self, pos, nodelist=activeStates, node_color='palegreen')
-		nx.draw_networkx_nodes(self, pos, nodelist=inactiveStates, node_color='tomato')
+		nx.draw_networkx_nodes(self, pos, nodelist=activeStates, node_color="palegreen")
+		nx.draw_networkx_nodes(self, pos, nodelist=inactiveStates - {"END"}, node_color="lightgrey")
+		# END STATE
+		nx.draw_networkx_nodes(self, pos, nodelist={"END"}, node_color="tomato" if "END" in inactiveStates else "palegreen")
 		nx.draw_networkx_edges(self, pos)
 		nx.draw_networkx_labels(self, pos, font_family="DejaVu Sans", font_size=10)
 		edgeLabel = nx.get_edge_attributes(self, "transition")
-		nx.draw_networkx_edge_labels(self, pos, labels = edgeLabel)
+		nx.draw_networkx_edge_labels(self, pos, edge_labels=edgeLabel)
 		pennyText = [repr(penny) for penny in self.activeStates]
-		plt.annotate("\n".join(pennyText), xy=(0.01, 0), xycoords='axes fraction')
+		plt.annotate("\n".join(pennyText), xy=(0.01, 0), xycoords="axes fraction")
 		plt.axis("off")
 		fig.show()
 		self._fig = fig

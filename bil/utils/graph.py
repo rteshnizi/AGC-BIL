@@ -110,7 +110,7 @@ class GraphAlgorithms:
 		normalEdges = []
 		temporalEdges = []
 		for e in g.edges:
-			if g.edges[e]["isTemporal"]:
+			if "isTemporal" in g.edges[e] and g.edges[e]["isTemporal"]:
 				temporalEdges.append(e)
 			else:
 				normalEdges.append(e)
