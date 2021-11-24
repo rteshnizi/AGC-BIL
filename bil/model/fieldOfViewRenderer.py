@@ -10,13 +10,13 @@ class FieldOfViewRenderer:
 		self._timeLabelCanvasId = None
 
 	def render(self, cGraph: ConnectivityGraph, canvas):
-		if self._previousCGraph is not None and self._previousCGraph.timestamp != cGraph.timestamp: self.clearRender(canvas)
+		if self._previousCGraph is not None and self._previousCGraph.time != cGraph.time: self.clearRender(canvas)
 		for fov in cGraph.fovNodes:
 			cGraph.nodes[fov]["region"].render(canvas)
 		for shadowName in cGraph.shadowNodes:
 			shadowRegion = cGraph.nodes[shadowName]["region"]
 			shadowRegion.render(canvas)
-		timeStr = "N/A" if cGraph is None else "%.2f" % cGraph.timestamp
+		timeStr = "N/A" if cGraph is None else "%.2f" % cGraph.time
 		labelStr = "t = %s" % timeStr
 		self._timeLabelCanvasId = Drawing.CreateText(canvas, [-2, -5], labelStr, "TIME-LABEL")
 		self._previousCGraph = cGraph

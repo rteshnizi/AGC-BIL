@@ -1,11 +1,13 @@
 from typing import Dict, Tuple
+
+from bil.observation.fov import Fov
 from bil.observation.track import Track
 from bil.model.trajectory import Trajectory
 
 class Observation:
 	def __init__(self, time, fov, tracks):
 		self.time = time
-		self.fov = fov
+		self.fov: Fov = fov
 		# Key is (time, trackId)
 		self.tracks: Dict[Tuple[float, int], Track] = tracks
 
@@ -43,7 +45,10 @@ class Observations:
 			for trackId in observation.tracks:
 				track = observation.tracks[trackId]
 				poses.append(track.pose)
-		self._trajectories = [Trajectory("Traj-1", poses)]
+		if len(poses) > 0:
+			self._trajectories = [Trajectory("Traj-1", poses)]
+		else:
+			self._trajectories = []
 		return self._trajectories
 
 	def addObservation(self, observation: Observation):

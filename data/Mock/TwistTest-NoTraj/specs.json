@@ -11,5 +11,18 @@
 			"B": "bil.spec.lambdas.Prototypes.TWIST.B",
 			"T0": "bil.spec.lambdas.Prototypes.TWIST.T0"
 		}
+	},
+	"simple-2": {
+		"states": ["START", "S-0", "S-1", "END"],
+		"transitions": {
+			"START": ["((T0, False), S-0)"],
+			"S-0": ["((B, True), S-1)"],
+			"S-1": ["((A, True), END)"]
+		},
+		"validators": {
+			"A": "bil.spec.lambdas.Prototypes.TWIST.A",
+			"B": "bil.spec.lambdas.Prototypes.TWIST.B",
+			"T0": "bil.spec.lambdas.Prototypes.TWIST.T0"
+		}
 	}
 }

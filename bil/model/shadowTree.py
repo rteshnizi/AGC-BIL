@@ -29,21 +29,25 @@ class ShadowTree(nx.DiGraph):
 		print("Connecting Graphs through time...")
 		self._build(envMap, fovs, validators, startInd, endInd)
 
+	def __repr__(self) -> str:
+		return "ShadowTree"
+
 	def _generateTemporalName(self, name: str, time: float):
 		return "%s-%.2f" % (name, time)
 
 	def _getLowerAndUpperNode(self, n1, n2):
-		upper = n1 if self.nodes[n1]["timestamp"] > self.nodes[n2]["timestamp"] else n2
+		upper = n1 if self.nodes[n1]["fromTime"] > self.nodes[n2]["fromTime"] else n2
 		lower = n1 if upper != n1 else n2
 		return (lower, upper)
 
 	def _addNode(self, n, time):
 		self.add_node(n)
-		self.nodes[n]["timestamp"] = time
+		self.nodes[n]["fromTime"] = time
+		self.nodes[n]["toTime"] = time # This will be updated accordingly when adding temporal edges
 
-	def _addEdge(self, n1, n2, isTemporal=False):
+	def _addEdge(self, n1: str, n2: str, isTemporal: bool, fromTime = None, toTime = None):
 		(lower, upper) = self._getLowerAndUpperNode(n1, n2)
-		self.add_edge(lower, upper, isTemporal=isTemporal)
+		self.add_edge(lower, upper, isTemporal=isTemporal, fromTime=fromTime, toTime=toTime)
 
 	def _shadowsAreConnectedTemporally(self, previousGraph: ConnectivityGraph, currentGraph: ConnectivityGraph, previousShadow: dict, currentShadow: dict, centerOfRotation: Geometry.Coords):
 		"""
@@ -347,13 +351,13 @@ class ShadowTree(nx.DiGraph):
 			previousGraph = self.graphs[-2]
 			# Add temporal edges between fovs
 			for fovNode in previousGraph.fovNodes:
-				fovNodeInShadowTree = self._generateTemporalName(fovNode, previousGraph.timestamp)
-				fovNodeInCurrentGraph = self._generateTemporalName(fovNode, graph.timestamp)
+				fovNodeInShadowTree = self._generateTemporalName(fovNode, previousGraph.time)
+				fovNodeInCurrentGraph = self._generateTemporalName(fovNode, graph.time)
 				self._addEdge(fovNodeInShadowTree, fovNodeInCurrentGraph, isTemporal=True)
 			# Add temporal edges between symbols
 			for symNode in previousGraph.symbolNodes:
-				symNodeInShadowTree = self._generateTemporalName(symNode, previousGraph.timestamp)
-				symNodeInCurrentGraph = self._generateTemporalName(symNode, graph.timestamp)
+				symNodeInShadowTree = self._generateTemporalName(symNode, previousGraph.time)
+				symNodeInCurrentGraph = self._generateTemporalName(symNode, graph.time)
 				self._addEdge(symNodeInShadowTree, symNodeInCurrentGraph, isTemporal=True)
 			# Add temporal edges between shadows
 			for shadowNodeInPreviousGraph in previousGraph.shadowNodes:
@@ -362,20 +366,21 @@ class ShadowTree(nx.DiGraph):
 					currentShadowNodeRegion = graph.nodes[shadowNodeInCurrentGraph]["region"]
 					if previousShadowNodeRegion.polygon.intersects(currentShadowNodeRegion.polygon):
 						if self._shadowsAreConnectedTemporally(previousGraph, graph, previousGraph.nodes[shadowNodeInPreviousGraph], graph.nodes[shadowNodeInCurrentGraph], centerOfRotation):
-							shadowNodeInShadowTree = self._generateTemporalName(shadowNodeInPreviousGraph, previousGraph.timestamp)
-							shadowNodeInCurrentGraph = self._generateTemporalName(shadowNodeInCurrentGraph, graph.timestamp)
+							shadowNodeInShadowTree = self._generateTemporalName(shadowNodeInPreviousGraph, previousGraph.time)
+							shadowNodeInCurrentGraph = self._generateTemporalName(shadowNodeInCurrentGraph, graph.time)
+							self.nodes[shadowNodeInShadowTree]["toTime"] = graph.time
 							self._addEdge(shadowNodeInShadowTree, shadowNodeInCurrentGraph, isTemporal=True)
 		return
 
 	def _appendGraph(self, graph: ConnectivityGraph):
 		for node in graph.nodes:
-			temporalName = self._generateTemporalName(node, graph.timestamp)
-			self._addNode(temporalName, graph.timestamp)
+			temporalName = self._generateTemporalName(node, graph.time)
+			self._addNode(temporalName, graph.time)
 			GraphAlgorithms.cloneNodeProps(graph.nodes[node], self.nodes[temporalName])
 		for edge in graph.edges:
-			frm = self._generateTemporalName(edge[0], graph.timestamp)
-			to = self._generateTemporalName(edge[1], graph.timestamp)
-			self._addEdge(frm, to)
+			frm = self._generateTemporalName(edge[0], graph.time)
+			to = self._generateTemporalName(edge[1], graph.time)
+			self._addEdge(frm, to, False)
 		self.graphs.append(graph)
 		return
 

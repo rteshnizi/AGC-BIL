@@ -1,41 +1,19 @@
-import re as RegEx
-import json
-from abc import ABC, abstractmethod
-
+import bil # If you remove this, this file will throw an error
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.observation.pose import Pose
-from bil.spec.lambdas import Prototypes, LambdaType
-import bil
-
-class AbstractValidator(ABC):
-	@abstractmethod
-	def execute(self, p: Pose):
-		"""The method to execute this validator"""
-		pass
-
-class RegionValidator(AbstractValidator):
-	def __init__(self, funcStr: str) -> bool:
-		super().__init__()
-		self._str = funcStr
-		self._function = eval(funcStr)
-
-	def execute(self, p: Pose):
-		pass
-
+from bil.spec.lambdas import NfaLambda, Prototypes, LambdaType
 class Validator(object):
 	def __init__(self, name, lambdaStr):
 		self.name = name
 		# for Time, value is a float
 		# myStr = "from bil.utils.geometry import Geometry;" + lambdaStr + ";"
-		self.lambdaObj = eval(lambdaStr)
+		self.lambdaObj: NfaLambda = eval(lambdaStr)
 		self._lambdaString = lambdaStr
 		# for Region, value is a polygonalRegion
 		if self.isRegion:
-			coords = list(zip(*self.lambdaObj.spaceTimeSet.polygon.exterior.coords.xy))
-			self.value = PolygonalRegion("sym-%s" % self.name, coords, "BLUE")
+			self.value = PolygonalRegion("sym-%s" % self.name, [], "BLUE", polygon=self.lambdaObj.spaceTimeSet.spaceRegion)
 		else:
-			# TODO: Time executioner
-			pass
+			self.value = self.lambdaObj.spaceTimeSet.timeRegion
 
 	@property
 	def isRegion(self):

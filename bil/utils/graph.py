@@ -1,15 +1,41 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D # leave this here, otherwise fig.gca(projection="3d") won't work
 from math import nan, isnan
 from queue import Queue
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from bil.model.shadowRegion import ShadowRegion
+from bil.spec.lambdas import NfaLambda
+from bil.spec.spaceTime import ProjectiveSpaceTimeSet
+from bil.spec.timeRegion import TimeInterval
+
+Queue.__repr__ = lambda q: repr(q.queue)
 
 class GraphAlgorithms:
 	_allFigs = set()
+
+	@staticmethod
+	def bfs(shadowTree: nx.DiGraph, start: str, goalFunc: NfaLambda.NfaLambdaFunc) -> Union[List[str], None]:
+		q = Queue()
+		visited = set()
+		q.put([start])
+		while not q.empty():
+			path = q.get()
+			n = path[-1]
+			visited.add(n)
+			nodeData = shadowTree.nodes[n]
+			spaceTimeSetOfNode = ProjectiveSpaceTimeSet(nodeData["region"].polygon, TimeInterval(nodeData["fromTime"], nodeData["toTime"], True, True))
+			if nodeData["type"] == "sensor": continue # FIXME: check if there is a track head here
+			if goalFunc(spaceTimeSetOfNode):
+				return path
+			for child in shadowTree.adj[n]:
+				if child in visited: continue
+				newPath = list(path)
+				newPath.append(child)
+				q.put(newPath)
+		return None
 
 	@staticmethod
 	def isConnectedBfs(graph: nx.DiGraph, start, end, premittedBeams = []):
@@ -123,13 +149,13 @@ class GraphAlgorithms:
 
 	@staticmethod
 	def getNodeCoordinates(g, nodeName) -> tuple:
-		return (g.nodes[nodeName]["centroid"].x, g.nodes[nodeName]["centroid"].y, g.nodes[nodeName]["timestamp"])
+		return (g.nodes[nodeName]["centroid"].x, g.nodes[nodeName]["centroid"].y, g.nodes[nodeName]["fromTime"])
 
 	@staticmethod
 	def displayGeometricGraph(g: nx.DiGraph):
 		fig = plt.figure(len(GraphAlgorithms._allFigs))
 		GraphAlgorithms._allFigs.add(fig)
-		ax = fig.gca(projection='3d')
+		ax = fig.gca(projection="3d")
 		xFov = []
 		xpFov = None
 		yFov = []
@@ -147,23 +173,23 @@ class GraphAlgorithms:
 				raise "Graph node needs a type"
 			elif g.nodes[node]["type"] == "sensor":
 				(xFov, yFov) = g.nodes[node]["region"].polygon.exterior.coords.xy
-				zFov = [g.nodes[node]["timestamp"]] * len(xFov)
+				zFov = [g.nodes[node]["fromTime"]] * len(xFov)
 				ax.plot(xFov, yFov, zFov, "g-")
-				# ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["timestamp"], node, color="darkgreen")
+				# ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["fromTime"], node, color="darkgreen")
 				if xpFov is not None:
 					for i in range(len(xFov) - 1):
 						ax.plot([xpFov[i], xFov[i]], [ypFov[i], yFov[i]], [zpFov[i], zFov[i]], "g-")
 				(xpFov, ypFov, zpFov) = (xFov, yFov, zFov)
 			elif g.nodes[node]["type"] == "symbol":
 				(xSymbol, ySymbol) = g.nodes[node]["region"].polygon.exterior.coords.xy
-				zSymbol = [g.nodes[node]["timestamp"]] * len(xSymbol)
+				zSymbol = [g.nodes[node]["fromTime"]] * len(xSymbol)
 				ax.plot(xSymbol, ySymbol, zSymbol, "b-")
-				# ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["timestamp"], node, color="darkblue")
+				# ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["fromTime"], node, color="darkblue")
 			elif g.nodes[node]["type"] == "shadow":
 				(xShadow, yShadow) = g.nodes[node]["region"].polygon.exterior.coords.xy
-				zShadow = [g.nodes[node]["timestamp"]] * len(xShadow)
+				zShadow = [g.nodes[node]["fromTime"]] * len(xShadow)
 				ax.plot(xShadow, yShadow, zShadow, "k-")
-				# ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["timestamp"], node, color="maroon")
+				# ax.text(g.nodes[node]["centroid"].x, g.nodes[node]["centroid"].y, g.nodes[node]["fromTime"], node, color="maroon")
 			else:
 				raise "Unknown node type: %s" % g.nodes[node]["type"]
 		ax.autoscale()

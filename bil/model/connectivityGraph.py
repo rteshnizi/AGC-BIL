@@ -20,22 +20,22 @@ class ConnectivityGraph(nx.DiGraph):
 		self.shadowNodes: List[str] = []
 		self.symbolNodes: List[str] = []
 		self.map: Map = envMap
-		self.timestamp = timestamp
-		print("Building graph for %s" % self.timestamp)
+		self.time = timestamp
+		print("Building graph for %s" % self.time)
 		self._build(fovUnion)
 		self._fig1 = None
 		# DEBUG MEMBERS
 		self.polygonsToDraw = []
 
 	def __repr__(self):
-		return "cGraph-%.2f" % self.timestamp
+		return "cGraph-%.2f" % self.time
 
 	def _addNode(self, nodeName: str, region: PolygonalRegion, type: str):
 		self.add_node(nodeName)
 		self.nodes[nodeName]["region"] = region
 		self.nodes[nodeName]["centroid"] = region.polygon.centroid
 		self.nodes[nodeName]["type"] = type
-		self.nodes[nodeName]["timestamp"] = self.timestamp
+		self.nodes[nodeName]["fromTime"] = self.time
 		if type == "sensor":
 			self.fovNodes.append(nodeName)
 		elif type == "shadow":
@@ -52,7 +52,7 @@ class ConnectivityGraph(nx.DiGraph):
 
 	def _addSingleSensorRegionConnectedComponent(self, connectedComponent, index):
 		name = "FOV-%d" % index
-		region = SensingRegion(name, [], self.timestamp, index, polygon=connectedComponent)
+		region = SensingRegion(name, [], self.time, index, polygon=connectedComponent)
 		self._addNode(name, region, "sensor")
 		return
 

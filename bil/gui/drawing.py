@@ -25,7 +25,7 @@ class Drawing:
 			Drawing.TRANSLATION_X = 10
 			Drawing.TRANSLATION_Y = 125
 			Drawing.SCALE = 5
-		elif dataPrototype.startswith("TwistTest"):
+		elif dataPrototype.startswith("TwistTest-NoTraj"):
 			Drawing.TRANSLATION_X = 10
 			Drawing.TRANSLATION_Y = 125
 			Drawing.SCALE = 5.5

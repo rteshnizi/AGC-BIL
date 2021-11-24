@@ -2,14 +2,38 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import re as RegEx
 import json
-from typing import Set
+from typing import Dict, List, Set, Union
 
 from bil.model.connectivityGraph import ConnectivityGraph
+from bil.model.map import Map
 from bil.model.shadowTree import ShadowTree
-from bil.observation.observations import Observation
-from bil.spec.spaceTime import SpaceTimeSet
+from bil.observation.observations import Observation, Observations
+from bil.spec.spaceTime import ProjectiveSpaceTimeSet
+from bil.spec.validator import Validator
 from bil.utils.graph import GraphAlgorithms
 from bil.utils.geometry import Geometry
+
+
+class Penny:
+	"""
+		This is the weirdest name I could use.
+		This represents a penny in what Dr. Shell referred to as a stack of pennies that will track a possible pose and its state
+		`state`: str -> the name of the state in the nfa graph
+		`path`: List[str] -> the path in the shadow graph that has so far carried this penny over the transitions
+	"""
+	def __init__(self, state: str, path: List[str]):
+		self.state = state
+		self.path = path
+
+	def __repr__(self):
+		return "(%s, %s)" % (self.state, self.path)
+
+	def __hash__(self):
+		return hash(repr(self))
+
+	def getShapelyPolygon(self, cGraph: ConnectivityGraph):
+		cluster = cGraph.nodeToClusterMap[self.path]
+		return cGraph.nodeClusters[cluster].polygon
 
 class Transition:
 	def __init__(self, specifier, validators):
@@ -17,40 +41,26 @@ class Transition:
 		matches = RegEx.search(r"\((.*),\s+(.*)\)", self.specifier)
 		self.name = matches.group(1)
 		self.consuming = json.loads(matches.group(2).lower())
-		self.validator = validators[self.name]
+		self.validator: Validator = validators[self.name]
 
 	def __repr__(self):
 		return repr(self.specifier)
 
-	def execute(self, pose):
-		return self.validator.execute(pose)
-
-class Penny:
-	"""
-	This is the weirdest name I could use.
-	This represents a penny in what Dr. Shell referred to as a stack of pennies that will track a possible pose and its state
-	"""
-	def __init__(self, state, pose):
-		self.state = state
-		self.pose = pose
-
-	def __repr__(self):
-		return "(%s, %s)" % (self.state, self.pose)
-
-	def __hash__(self):
-		return hash(repr(self))
-
-	def getShapelyPolygon(self, cGraph: ConnectivityGraph):
-		cluster = cGraph.nodeToClusterMap[self.pose]
-		return cGraph.nodeClusters[cluster].polygon
-
+	def execute(self, penny: Penny, shadowTree: ShadowTree) -> Union[List[str], None]:
+		"""
+			Here we check whether any node in the shadow tree satisfy the validator for this node
+			#### Returns
+				The path that satisfied the validator function or `None`
+		"""
+		path = GraphAlgorithms.bfs(shadowTree, penny.path[-1], self.validator.lambdaObj.func)
+		return None if path is None else path
 class NFA(nx.DiGraph):
 	def __init__(self, specName, states, transitions, validators):
 		super().__init__()
 		self._specName = specName
 		self.states = states
 		self.transitions = transitions
-		self.validators = validators
+		self.validators: Dict[str, Validator] = validators
 		self.START_SYMBOL = "START"
 		self.TERMINAL_SYMBOL = "END"
 		self._fig = None
@@ -72,63 +82,43 @@ class NFA(nx.DiGraph):
 				toState = matches.group(2)
 				self.add_edge(fromState, toState, transition=transition)
 
-	def read(self, envMap, observation: Observation, prevObservation):
-		if len(observation.fov.sensors) == 0:
-			print("Don't know how to handle no FOV yet")
+	def readAll(self, envMap: Map, observations: Observations) -> Union[List[str], None]:
+		if len(observations.getObservationByIndex(0).fov.sensors) == 0:
+			print("Don't know how to handle no sensor yet")
 			return
-		cGraph = ConnectivityGraph(envMap, observation.fov, self.validators)
-		condensedGraph = cGraph.condense()
-		if prevObservation is None:
-			if len(observation.tracks) == 0:
-				for n in condensedGraph.nodes:
-					if GraphAlgorithms.isShadowRegion(condensedGraph, n):
-						self.activeStates.add(Penny(self.START_SYMBOL, n))
-			elif len(observation.tracks) == 1:
-				foundPolygon = False
-				for n in condensedGraph.nodes:
-					if GraphAlgorithms.isBeamNode(n): continue
-					track = observation.tracks[next(iter(observation.tracks))]
-					if Geometry.isXyInsidePolygon(track.pose.x, track.pose.y, cGraph.nodeClusters[n].polygon):
-						self.activeStates.add(Penny(self.START_SYMBOL, n))
-						foundPolygon = True
-						break
-				if not foundPolygon: raise RuntimeError("Track Pose %s is not inside any polygon." % repr(track.pose))
-			else: raise RuntimeError("We only work with a single target for now.")
-		else:
-			# FIXME: Start here, and remove shadows that cannot be connected
-			if len(observation.tracks) == 0:
-				# Check connectivity with previous Graph (timed graph) for each penny -> Shadows that are connected will carry forward
-				timedGraph = ShadowTree([self._previousCGraph, cGraph])
-				self.propagatePennies(timedGraph)
-			elif len(observation.tracks) == 1:
-				# Check connectivity with previous Graph (timed graph) for each penny -> Shadows that are connected will to the observation carry forward and turn into the guy
-				pass
-			else: raise RuntimeError("We only work with a single target for now.")
-		activeStatesCopy: Set[Penny] = self.activeStates.copy()
-		while len(activeStatesCopy) > 0:
-			penny = activeStatesCopy.pop()
-			spaceSet = penny.getShapelyPolygon(cGraph)
-			spaceTimeSet = SpaceTimeSet(spaceSet, observation.time)
+
+		fovs = [observations[o].fov for o in observations]
+		shadowTree = ShadowTree(envMap, fovs, self.validators)
+		# TODO: test with a trajectory
+		for s in shadowTree.graphs[0].shadowNodes:
+			self.activeStates.add(Penny(self.START_SYMBOL, [shadowTree._generateTemporalName(s, shadowTree.graphs[0].time)]))
+
+		# propagate pennies in shadow tree
+		while len(self.activeStates) > 0:
+			penny = self.activeStates.pop()
 			for outEdge in self.out_edges(penny.state):
 				currentState = outEdge[0]
 				nextState = outEdge[1]
-				transition = self.get_edge_data(currentState, nextState)["transition"]
-				passed = transition.execute(spaceTimeSet)
-				if passed:
-					if penny in self.activeStates: self.activeStates.remove(penny) # Non-consuming pennies are not in this set
-					# While there are non-consuming transitions, we should keep doing traversing them.
-					if not transition.consuming:
-						activeStatesCopy.add(Penny(nextState, penny.pose))
-					else:
-						self.activeStates.add(Penny(nextState, penny.pose))
-				else:
-					self.activeStates.add(penny)
-		self._previousCGraph = cGraph
+				transition: Transition = self.get_edge_data(currentState, nextState)["transition"]
+				certificate = transition.execute(penny, shadowTree)
+				if certificate is not None:
+					fullCertificate = penny.path[:-1] + certificate
+					if nextState == self.TERMINAL_SYMBOL:
+						return fullCertificate
+					self.activeStates.add(Penny(nextState, fullCertificate))
+					# FIXME: We are not dealing with non-consuming edges
+					# if penny in self.activeStates: self.activeStates.remove(penny) # Non-consuming pennies are not in this set
+					# # While there are non-consuming transitions, we should keep doing traversing them.
+					# if not transition.consuming:
+					# 	if nextState == self.TERMINAL_SYMBOL:
+					# 		return certificate
+					# 	self.activeStates.add(Penny(nextState, nextShadowNode))
+					# else: # FIXME: Testing: If the penny can't move forward, it's a dead end because I have the full ShadowTree
+					# 	self.activeStates.add(Penny(nextState, nextShadowNode))
+		return None
 
-	def propagatePennies(self, timedGraph: ShadowTree):
-		for penny in self.activeStates:
-			neighbors = timedGraph.getTemporalNeighbors(penny.pose)
-			print(neighbors)
+	def read(self, envMap, observation: Observation, prevObservation):
+		raise "Not Implemented"
 
 	def displayGraph(self):
 		fig = plt.figure(len(GraphAlgorithms._allFigs))

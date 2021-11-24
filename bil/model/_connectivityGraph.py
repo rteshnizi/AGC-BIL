@@ -125,7 +125,7 @@ class ConnectivityGraph(nx.DiGraph):
 		# 	if validator.isRegion:
 		# 		region1 = validator.value
 		# 		condensedGraph.add_node(region1.name)
-		# 		condensedGraph.nodes[region1.name]["timestamp"] = self.timestamp
+		# 		condensedGraph.nodes[region1.name]["fromTime"] = self.timestamp
 		# 		condensedGraph.nodes[region1.name]["region"] = region1
 		# 		condensedGraph.nodes[region1.name]["centroid"] = region1.polygon.centroid
 		# 		condensedGraph.nodes[region1.name]["mappedName"] = region1.name
@@ -155,7 +155,7 @@ class ConnectivityGraph(nx.DiGraph):
 
 	def _addNode(self, nodeName):
 		self.add_node(nodeName)
-		self.nodes[nodeName]["timestamp"] = self.timestamp
+		self.nodes[nodeName]["fromTime"] = self.timestamp
 
 	def _addRegion(self, polygonalRegion):
 		name = polygonalRegion.name

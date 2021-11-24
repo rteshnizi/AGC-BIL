@@ -1,7 +1,31 @@
-from bil.spec.time import TimeSpecifier
+from shapely.geometry import Polygon
+from typing import Union
 
-class SpaceTimeSet:
-	# FIXME: Use TimeRange instead of float. But for now we are projecting
-	def __init__(self, shapelyPolygon, timeRange: float):
-		self.polygon = shapelyPolygon
-		self.timeRange = timeRange
+from bil.spec.timeRegion import TimeInterval
+from bil.utils.geometry import Geometry
+
+class ProjectiveSpaceTimeSet:
+	"""
+		A projective space time set. That is, the set is space x time.
+		If `space` is `None`, there is no space requirement.
+	"""
+	def __init__(self, space: Union[Polygon, None], time: TimeInterval):
+		self.spaceRegion = space
+		self.timeRegion = time
+
+	def __repr__(self) -> str:
+		return "ST{%s x %s}" % (repr(self.spaceRegion), repr(self.timeRegion))
+
+	def intersect(self, other: "ProjectiveSpaceTimeSet") -> bool:
+		if not self.spaceIntersectionCheck(other.spaceRegion): return False
+		if not self.timeRegion.intersect(other.timeRegion): return False
+		return True
+
+	def spaceIntersectionCheck(self, poly2) -> bool:
+		if self.spaceRegion == None: return True
+		intersection = Geometry.intersect(self.spaceRegion, poly2)
+		try:
+			return intersection.area > 0
+		except:
+			return intersection[0].area > 0
+		return False

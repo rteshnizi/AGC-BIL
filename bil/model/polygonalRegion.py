@@ -1,5 +1,5 @@
 from shapely.geometry import LineString, Point, Polygon
-from typing import Dict, List, Tuple
+from typing import Dict, List
 from skimage import transform
 
 from bil.gui.drawing import Drawing
@@ -7,10 +7,10 @@ from bil.utils.geometry import Geometry
 
 class PolygonalRegion:
 	"""
-	coords will be used to create the polygon.
-	If polygon is given, coords arg will be ignored.
+		coords will be used to create the polygon.
+		If polygon is given, coords arg will be ignored.
 	"""
-	def __init__(self, name: str, coords: List[Tuple[float, float]], boundaryColor="RED", backgroundColor="", polygon: Polygon = None):
+	def __init__(self, name: str, coords: Geometry.CoordsList, boundaryColor="RED", backgroundColor="", polygon: Polygon = None):
 		self.name = name
 		self._renderLineWidth = 1
 		try:

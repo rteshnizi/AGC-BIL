@@ -36,7 +36,7 @@ class TimedGraph(nx.DiGraph):
 		self._build(graphs, startInd, endInd)
 
 	def _getLowerAndUpperNode(self, n1, n2):
-		upper = n1 if self.nodes[n1]["timestamp"] > self.nodes[n2]["timestamp"] else n2
+		upper = n1 if self.nodes[n1]["fromTime"] > self.nodes[n2]["fromTime"] else n2
 		lower = n1 if upper != n1 else n2
 		return (lower, upper)
 
