@@ -32,6 +32,10 @@ class Drawing:
 			# Drawing.TRANSLATION_X = 70
 			# Drawing.TRANSLATION_Y = 175
 			# Drawing.SCALE = 3.5
+		elif dataPrototype.startswith("TwistTest-Traj1"):
+			Drawing.TRANSLATION_X = 10
+			Drawing.TRANSLATION_Y = 125
+			Drawing.SCALE = 5.5
 		else:
 			raise RuntimeError("Please set drawing constants for data folder \"%s\"" % dataPrototype)
 

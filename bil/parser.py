@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Tuple
-import json
+from jsoncomment import JsonComment
 import os
 
 from bil.observation.observations import Observations, Observation
@@ -14,6 +14,8 @@ from bil.model.observationOld import ObservationOld
 from bil.model.teamMember import TeamMember
 from bil.spec.specification import Specification
 
+JsonParser = JsonComment()
+
 class Parser(ABC):
 	def __init__(self, dirAbsPath):
 		self._dirAbsPath = dirAbsPath
@@ -23,7 +25,7 @@ class EnvironmentParser(Parser):
 		super().__init__(dirAbsPath)
 		self._fmPath = os.path.abspath(os.path.join(self._dirAbsPath, "fm.json"))
 		self._saMapPath = os.path.abspath(os.path.join(self._dirAbsPath, "sam.json"))
-		self._ptListFile = os.path.abspath(os.path.join(self._dirAbsPath, "dt.json"))
+		self._ptListPath = os.path.abspath(os.path.join(self._dirAbsPath, "dt.json"))
 
 	def parse(self) -> Tuple[FeatureMap, Map]:
 		"""
@@ -38,19 +40,16 @@ class EnvironmentParser(Parser):
 	def _buildFeatureMap(self):
 		if not os.path.isfile(self._fmPath):
 			raise FileNotFoundError("%s does not exist" % self._fmPath)
-		with open(self._fmPath, 'r') as jsonFile:
-			self._parsedFm = json.load(jsonFile)
+		self._parsedFm = JsonParser.loadf(self._fmPath)
 		return FeatureMap(self._parsedFm["Nodes"])
 
 	def _buildMap(self, featureMap) -> Map:
 		if not os.path.isfile(self._saMapPath):
 			raise FileNotFoundError("%s does not exist" % self._saMapPath)
-		if not os.path.isfile(self._ptListFile):
-			raise FileNotFoundError("%s does not exist" % self._ptListFile)
-		with open(self._saMapPath, 'r') as jsonFile:
-			self._parsedSaMap = json.load(jsonFile)
-		with open(self._ptListFile, 'r') as jsonFile:
-			self._parsedPtList = json.load(jsonFile)
+		if not os.path.isfile(self._ptListPath):
+			raise FileNotFoundError("%s does not exist" % self._ptListPath)
+		self._parsedSaMap = JsonParser.loadf(self._saMapPath)
+		self._parsedPtList = JsonParser.loadf(self._ptListPath)
 		return Map(self._parsedPtList["Points"], [n["vertexIDs"] for n in self._parsedSaMap["Nodes"]], [n["feature"] for n in self._parsedSaMap["Nodes"]], featureMap)
 
 class ObservationParser(Parser):
@@ -65,8 +64,7 @@ class ObservationParser(Parser):
 		A tuple `(observations, sens)`
 		Stories are sensor readings, Agents are sensor locations
 		"""
-		with open(self._observationsJsonPath, 'r') as jsonFile:
-			parsedObservation = json.load(jsonFile)
+		parsedObservation = JsonParser.loadf(self._observationsJsonPath)
 		idNum = 0
 		observations = {}
 		agents = {}
@@ -101,8 +99,7 @@ class ObservationParser(Parser):
 		A tuple `observations`
 		Stories are sensor readings, Agents are sensor locations
 		"""
-		with open(self._observationsJsonPath, 'r') as jsonFile:
-			rawObservations = json.load(jsonFile)
+		rawObservations = JsonParser.loadf(self._observationsJsonPath)
 		observations = Observations()
 		# FIXME: Once we process multiple agents, this should change
 		lastTrack = None
@@ -146,8 +143,7 @@ class SpecParser(Parser):
 		Stories are sensor readings, Agents are sensor locations
 		"""
 		specs = []
-		with open(self._specsPath, 'r') as jsonFile:
-			specsJson = json.load(jsonFile)
+		specsJson = JsonParser.loadf(self._specsPath)
 		for specName in specsJson:
 			specs.append(Specification(specName, specsJson[specName]))
 		return specs
