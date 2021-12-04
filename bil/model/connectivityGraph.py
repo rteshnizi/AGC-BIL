@@ -1,19 +1,19 @@
 import networkx as nx
 from shapely.geometry import LineString, Polygon, MultiPolygon
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
 from bil.model.polygonalRegion import PolygonalRegion
 from bil.model.sensingRegion import SensingRegion
 from bil.model.shadowRegion import ShadowRegion
 from bil.model.map import Map
 from bil.model.validatorRegion import ValidatorRegion
-from bil.observation.fov import Fov
+from bil.observation.track import Tracks
 from bil.spec.validator import Validator
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
 
 class ConnectivityGraph(nx.DiGraph):
-	def __init__(self, envMap: Map, fovUnion: Union[Polygon, MultiPolygon], timestamp: float, validators: Dict[str, Validator]):
+	def __init__(self, envMap: Map, fovUnion: Union[Polygon, MultiPolygon], tracks: Tracks, timestamp: float, validators: Dict[str, Validator]):
 		super().__init__()
 		self.validators = validators
 		self.fovNodes: List[str] = []
@@ -22,7 +22,7 @@ class ConnectivityGraph(nx.DiGraph):
 		self.map: Map = envMap
 		self.time = timestamp
 		print("Building graph for %s" % self.time)
-		self._build(fovUnion)
+		self._build(fovUnion, tracks)
 		self._fig1 = None
 		# DEBUG MEMBERS
 		self.polygonsToDraw = []
@@ -46,24 +46,26 @@ class ConnectivityGraph(nx.DiGraph):
 			raise "Unknown node type %s" % type
 		return
 
-	def _addEdges(self, fromStr, toStr):
+	def _addEdges(self, fromStr, toStr, directed=False):
 		self.add_edge(fromStr, toStr)
+		if directed: return
 		self.add_edge(toStr, fromStr)
 
-	def _addSingleSensorRegionConnectedComponent(self, connectedComponent, index):
+	def _addSingleSensorRegionConnectedComponent(self, connectedComponent, index: int, tracks: Tracks):
+		# if len(tracks) == 0: return
 		name = "FOV-%d" % index
-		region = SensingRegion(name, [], self.time, index, polygon=connectedComponent)
+		region = SensingRegion(name, [], self.time, index, polygon=connectedComponent, tracks=tracks)
 		self._addNode(name, region, "sensor")
 		return
 
-	def _addSensorRegionConnectedComponents(self, fovUnion: Union[Polygon, MultiPolygon]):
+	def _addSensorRegionConnectedComponents(self, fovUnion: Union[Polygon, MultiPolygon], tracks: Tracks):
 		if isinstance(fovUnion, MultiPolygon):
 			i = 0
 			for connectedComponent in fovUnion:
-				self._addSingleSensorRegionConnectedComponent(connectedComponent, i)
+				self._addSingleSensorRegionConnectedComponent(connectedComponent, i, tracks)
 				i += 1
 		else:
-			self._addSingleSensorRegionConnectedComponent(fovUnion, 0)
+			self._addSingleSensorRegionConnectedComponent(fovUnion, 0, tracks)
 		return
 
 	def _createNewShadow(self, shadow: Polygon):
@@ -71,9 +73,15 @@ class ConnectivityGraph(nx.DiGraph):
 		region = ShadowRegion(name, Geometry.getPolygonCoords(shadow))
 		self._addNode(name, region, "shadow")
 		for fovNode in self.fovNodes:
-			fovComponent = self.nodes[fovNode]["region"]
+			fovComponent: SensingRegion = self.nodes[fovNode]["region"]
+			if not fovComponent.containsTracks: continue
 			if Geometry.haveOverlappingEdge(fovComponent.polygon, region.polygon):
-				self._addEdges(fovNode, name)
+				for trackId in fovComponent.tracks:
+					track = fovComponent.tracks[trackId]
+					if track.pose.spawn:
+						self._addEdges(name, fovNode, directed=True)
+					if track.pose.vanished:
+						self._addEdges(fovNode, name, directed=True)
 		return
 
 	def _mergeShadow(self, existingShadow: ShadowRegion, shadow: Polygon):
@@ -137,8 +145,8 @@ class ConnectivityGraph(nx.DiGraph):
 				if broken: continue
 		return
 
-	def _build(self, fovUnion: Union[Polygon, MultiPolygon]):
-		self._addSensorRegionConnectedComponents(fovUnion)
+	def _build(self, fovUnion: Union[Polygon, MultiPolygon], tracks: Tracks):
+		self._addSensorRegionConnectedComponents(fovUnion, tracks)
 		self._constructShadows(fovUnion)
 		self._addSymbols(fovUnion)
 		return

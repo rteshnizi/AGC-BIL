@@ -61,7 +61,16 @@
 				]
 			}
 		],
-		"tracks": []
+		"tracks": [
+			{
+				"ID": 1,
+				"pose": [
+					59.0,
+					63.0,
+					0
+				]
+			}
+		]
 	},
 	// 26 degree rotation
 	{
@@ -93,7 +102,16 @@
 				]
 			}
 		],
-		"tracks": []
+		"tracks": [
+			{
+				"ID": 1,
+				"pose": [
+					64.0,
+					50.0,
+					0
+				]
+			}
+		]
 	},
 	// 30 degree rotation
 	{
@@ -125,12 +143,21 @@
 				]
 			}
 		],
-		"tracks": []
+		"tracks": [
+			{
+				"ID": 1,
+				"pose": [
+					78.0,
+					46.0,
+					0
+				]
+			}
+		]
 	},
 	// 48 degree rotation
 	{
 		"t": 14.0,
-		"deletedTracks": [],
+		"deletedTracks": [1],
 		"sensors": [
 			{
 				"ID": 0,

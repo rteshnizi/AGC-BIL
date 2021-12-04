@@ -11,6 +11,11 @@ class Pose:
 		self.spawn = False
 		self.vanished = False
 
+	@property
+	def psi(self):
+		"""The same as `angleFromX`"""
+		return self.angleFromX
+
 	def _bareRepr(self):
 		return "(%.2f, %.2f, %.2f)" % (self.time, self.x, self.y)
 

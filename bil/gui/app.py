@@ -106,11 +106,6 @@ class App(tk.Frame):
 		self.selectedSpec = specName
 		self.spec.render(self.canvas.tkCanvas)
 
-	def _validateSpec(self):
-		print("Validating %s" % self.selectedSpec)
-		for observation in self.observations.values():
-			i = 0
-
 	@property
 	def _maxEventIndex(self):
 		if self.shadowTree is None: return 0
@@ -136,16 +131,13 @@ class App(tk.Frame):
 
 	def _clearEvents(self, force=False):
 		self.fovRenderer.clearRender(self.canvas.tkCanvas)
-		# if self.shadowTree is None: return
-		# if len(self._eventDrawingId) == 0: return
-		# if not force and self._dbg["Show Event"].get() == 1: return
-		# [Drawing.RemoveShape(self.canvas.tkCanvas, id) for id in self._eventDrawingId]
-		# self._eventDrawingId = []
+		self._renderTrajectories(force=True)
 
 	def _renderEvents(self):
 		if self.shadowTree is None: return
 		if not self.shouldRenderEvent: return
 		self._clearFov()
+		self._clearTrajectories(force=True)
 		self.fovLabel.set(self._observationLabelText)
 		cGraph = self.shadowTree.graphs[self.eventIndex]
 		self.fovRenderer.render(cGraph, self.canvas.tkCanvas)
@@ -175,11 +167,13 @@ class App(tk.Frame):
 
 	def _clearFov(self):
 		self.fovRenderer.clearRender(self.canvas.tkCanvas)
+		self._renderTrajectories(force=True)
 
 	def _renderFov(self):
 		if not self.shouldShowFOV: return
 		self._clearEvents(force=True)
-		cGraph = ConnectivityGraph(self.map, self.observationToRender.fov.polygon, self.observationToRender.time, self.spec.validators)
+		self._clearTrajectories(force=True)
+		cGraph = ConnectivityGraph(self.map, self.observationToRender.fov.polygon , self.observationToRender.tracks, self.observationToRender.time, self.spec.validators)
 		self.fovRenderer.render(cGraph, self.canvas.tkCanvas)
 
 	def _changeFov(self, showNext: bool):
@@ -234,7 +228,7 @@ class App(tk.Frame):
 		self.spec.nfa.displayGraph()
 
 	def _createConnectivityGraph(self):
-		cGraph = ConnectivityGraph(self.map, self.observationToRender.fov.polygon, self.observationToRender.time, self.spec.validators)
+		cGraph = ConnectivityGraph(self.map, self.observationToRender.fov.polygon, self.observationToRender.tracks, self.observationToRender.time, self.spec.validators)
 		cGraph.displayGraph(self.displaySpaceTime, self.displayShadowTree)
 
 	def _createSingleLayerShadowTree(self):
@@ -255,7 +249,7 @@ class App(tk.Frame):
 
 	def _createShadowTree(self):
 		fovs = [self.observations[o].fov for o in self.observations]
-		self.shadowTree = ShadowTree(self.map, fovs, self.spec.validators)
+		self.shadowTree = ShadowTree(self.map, fovs, self.spec.validators, self.observations.tracks)
 		self.shadowTree.displayGraph(self.displaySpaceTime, self.displayShadowTree)
 		self.fovLabel.set(self._observationLabelText)
 

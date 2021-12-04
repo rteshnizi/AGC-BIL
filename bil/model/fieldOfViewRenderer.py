@@ -1,5 +1,7 @@
 from bil.gui.drawing import Drawing
 from bil.model.connectivityGraph import ConnectivityGraph
+from bil.model.sensingRegion import SensingRegion
+from bil.observation.track import Tracks
 
 class FieldOfViewRenderer:
 	"""
@@ -11,8 +13,11 @@ class FieldOfViewRenderer:
 
 	def render(self, cGraph: ConnectivityGraph, canvas):
 		if self._previousCGraph is not None and self._previousCGraph.time != cGraph.time: self.clearRender(canvas)
-		for fov in cGraph.fovNodes:
-			cGraph.nodes[fov]["region"].render(canvas)
+		for fovName in cGraph.fovNodes:
+			sensingRegion: SensingRegion = cGraph.nodes[fovName]["region"]
+			sensingRegion.render(canvas)
+			for trackId in sensingRegion.tracks:
+				sensingRegion.tracks[trackId].render(canvas)
 		for shadowName in cGraph.shadowNodes:
 			shadowRegion = cGraph.nodes[shadowName]["region"]
 			shadowRegion.render(canvas)
@@ -24,7 +29,10 @@ class FieldOfViewRenderer:
 	def clearRender(self, canvas):
 		if self._previousCGraph is None: return
 		for fov in self._previousCGraph.fovNodes:
-			self._previousCGraph.nodes[fov]["region"].clearRender(canvas)
+			fovNodeData = self._previousCGraph.nodes[fov]
+			fovNodeData["region"].clearRender(canvas)
+			for trackId in fovNodeData["tracks"]:
+				fovNodeData["tracks"][trackId].clearRender(canvas)
 		for shadowName in self._previousCGraph.shadowNodes:
 			shadowRegion = self._previousCGraph.nodes[shadowName]["region"]
 			shadowRegion.clearRender(canvas)

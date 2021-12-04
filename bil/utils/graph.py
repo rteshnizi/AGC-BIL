@@ -4,7 +4,7 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D # leave this here, otherwise fig.gca(projection="3d") won't work
 from math import nan, isnan
 from queue import Queue
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from bil.model.shadowRegion import ShadowRegion
 from bil.spec.lambdas import NfaLambda
@@ -27,7 +27,7 @@ class GraphAlgorithms:
 			visited.add(n)
 			nodeData = shadowTree.nodes[n]
 			spaceTimeSetOfNode = ProjectiveSpaceTimeSet(nodeData["region"].polygon, TimeInterval(nodeData["fromTime"], nodeData["toTime"], True, True))
-			if nodeData["type"] == "sensor": continue # FIXME: check if there is a track head here
+			# if nodeData["type"] == "sensor": continue # FIXME: check if there is a track head here
 			if goalFunc(spaceTimeSetOfNode):
 				return path
 			for child in shadowTree.adj[n]:
@@ -98,6 +98,22 @@ class GraphAlgorithms:
 		for key in frm: to[key] = frm[key]
 
 	@staticmethod
+	def multiPartiteLayout(g: nx.DiGraph, pos: Dict[str, Tuple[float, float]]=None):
+		y = 0
+		pos = {}
+		for subG in g.graphs:
+			keys = sorted(subG.nodes, key=lambda n: subG.nodes[n]["region"].polygon.centroid.x)
+			i = 0
+			for n in keys:
+				nn = g._generateTemporalName(n , subG.time)
+				pos[nn] = [0, 0]
+				pos[nn][0] = i / len(subG.nodes)
+				pos[nn][1] = y
+				i += 1
+			y += 2
+		return pos
+
+	@staticmethod
 	def displayGraphAuto(g: nx.DiGraph, displayGeomGraph, displaySpringGraph):
 		"""
 		Detects beam and non-beam nodes for the correct coloring
@@ -128,9 +144,11 @@ class GraphAlgorithms:
 				redNodesWithSymbols.append(symNode)
 		fig = plt.figure(len(GraphAlgorithms._allFigs))
 		GraphAlgorithms._allFigs.add(fig)
-		pos = nx.kamada_kawai_layout(g, scale=-1)
-		# pos = nx.kamada_kawai_layout(g, weight="timestamp", scale=-1)
-		# pos = nx.multipartite_layout(g, subset_key="timestamp", align="horizontal")
+		# pos = nx.spring_layout(g)
+		# pos = nx.kamada_kawai_layout(g, scale=-1)
+		# pos = nx.kamada_kawai_layout(g, weight="fromTime", scale=-1)
+		# pos = nx.multipartite_layout(g, subset_key="fromTime", align="horizontal")
+		pos = GraphAlgorithms.multiPartiteLayout(g)
 		nx.draw_networkx_nodes(g, pos, nodelist=greenNodesWithSymbols, node_color="palegreen")
 		nx.draw_networkx_nodes(g, pos, nodelist=redNodesWithSymbols, node_color="tomato")
 		normalEdges = []

@@ -1,7 +1,7 @@
-from typing import Dict, Tuple
+from typing import Dict
 
 from bil.observation.fov import Fov
-from bil.observation.track import Track
+from bil.observation.track import Tracks
 from bil.model.trajectory import Trajectory
 
 class Observation:
@@ -9,7 +9,7 @@ class Observation:
 		self.time = time
 		self.fov: Fov = fov
 		# Key is (time, trackId)
-		self.tracks: Dict[Tuple[float, int], Track] = tracks
+		self.tracks: Tracks = tracks
 
 	def __repr__(self):
 		return "Obs-%s" % repr(self.time)
@@ -19,6 +19,7 @@ class Observations:
 		self._dict: Dict[float, Observation] = {}
 		self.timeArray = []
 		self._trajectories = None
+		self._tracks = None
 
 	def __len__(self):
 		return len(self._dict)
@@ -34,6 +35,13 @@ class Observations:
 
 	def getObservationByIndex(self, index):
 		return self._dict[self.timeArray[index]]
+
+	@property
+	def tracks(self) -> Tracks:
+		if self._tracks is not None: return self._tracks
+		self._tracks = {}
+		for o in self: self._tracks.update(self[o].tracks)
+		return self._tracks
 
 	@property
 	def trajectories(self):

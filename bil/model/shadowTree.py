@@ -1,6 +1,6 @@
 from bil.model.sensingRegion import SensingRegion
 import networkx as nx
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, Polygon
 from skimage import transform
 import time
 from typing import List, Set, Dict, Tuple
@@ -8,13 +8,18 @@ from typing import List, Set, Dict, Tuple
 from bil.model.connectivityGraph import ConnectivityGraph
 from bil.model.map import Map
 from bil.observation.fov import Fov
+from bil.observation.track import Track, Tracks
 from bil.spec.validator import Validator
 from bil.utils.geometry import Geometry
 from bil.utils.graph import GraphAlgorithms
-from bil.utils.priorityQ import PriorityQ
+
+Events = Tuple[Polygon, float, str, LineString]
+"""
+`(FOV polygon, timeofEvent, "ingoing" | "outgoing", map edge relevant to the event)`
+"""
 
 class ShadowTree(nx.DiGraph):
-	def __init__(self, envMap: Map, fovs: List[Fov], validators: Dict[str, Validator], startInd = 0, endInd = None):
+	def __init__(self, envMap: Map, fovs: List[Fov], validators: Dict[str, Validator], tracks: Tracks, startInd = 0, endInd = None):
 		super().__init__()
 		self.MIN_TIME_DELTA = 1E-2
 		self._fig = None
@@ -27,7 +32,7 @@ class ShadowTree(nx.DiGraph):
 		self.lines: List[LineString] = []
 
 		print("Connecting Graphs through time...")
-		self._build(envMap, fovs, validators, startInd, endInd)
+		self._build(envMap, fovs, validators, tracks, startInd, endInd)
 
 	def __repr__(self) -> str:
 		return "ShadowTree"
@@ -61,7 +66,9 @@ class ShadowTree(nx.DiGraph):
 		currentP: Polygon = currentShadow["region"].polygon
 		intersectionOfShadows: Polygon = previousP.intersection(currentP)
 		for fov in previousGraph.fovNodes:
+			if fov not in previousGraph.nodes: continue
 			previousFovRegion: SensingRegion = previousGraph.nodes[fov]["region"]
+			if fov not in currentGraph.nodes: continue
 			currentFovRegion: SensingRegion = currentGraph.nodes[fov]["region"]
 			transformation: transform.AffineTransform = Geometry.getAffineTransformation(previousFovRegion.polygon, currentFovRegion.polygon, centerOfRotation)
 			ps = []
@@ -250,7 +257,7 @@ class ShadowTree(nx.DiGraph):
 					i += 1
 		return
 
-	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, centerOfRotation: Geometry.Coords, envMap: Map) -> Tuple[Polygon, float, str, LineString]:
+	def _findIntermediateComponentEvents(self, previousSensor: SensingRegion, currentSensor: SensingRegion, centerOfRotation: Geometry.Coords, envMap: Map) -> Events:
 		"""
 			Given the original configuration of the FOV (`previousSensor`) and the final configuration (`currentSensor`)
 			find all the times where there is a shadow component event.
@@ -335,11 +342,31 @@ class ShadowTree(nx.DiGraph):
 		# (FOV polygon, timeofEvent, "ingoing" | "outgoing", map edge relevant to the event)
 		return eventCandidates
 
-	def _appendConnectivityGraphPerEvent(self, envMap: Map, events: Tuple[Polygon, float, str, LineString], validators: Dict[str, Validator], startTime: float, endTime: float):
+	def _interpolateTrack(self, previousTracks: Tracks, currentTracks: Tracks, eventTime: float, eventFraction: float) -> Tracks:
+		"""
+			this function assumes members in previousTracks and currentTracks all have the same timestamp.
+		"""
+		if len(previousTracks) == 0 or len(currentTracks) == 0: return currentTracks
+		if eventFraction == 0: return previousTracks
+		if eventFraction == 1: return currentTracks
+		interpolatedTracks = {}
+		(currentTime, _) = next(iter(currentTracks))
+		for (prevTime, trackId) in previousTracks:
+			previousPose = previousTracks[(prevTime, trackId)].pose
+			currentPose = currentTracks[(currentTime, trackId)].pose
+			x = ((eventFraction * (currentPose.x - previousPose.x)) + previousPose.x)
+			y = ((eventFraction * (currentPose.y - previousPose.y)) + previousPose.y)
+			psi = ((eventFraction * (currentPose.psi - previousPose.psi)) + previousPose.psi)
+			interpolatedTracks[(eventTime, trackId)] = Track(trackId, eventTime, x, y, psi, isInterpolated=True)
+		return interpolatedTracks
+
+	def _appendConnectivityGraphPerEvent(self, envMap: Map, events: Events, previousTracks: Tracks, currentTracks: Tracks, validators: Dict[str, Validator], startTime: float, endTime: float):
 		graphs = []
 		for event in events:
-			time = ((event[1] * (endTime - startTime)) + startTime)
-			graph = ConnectivityGraph(envMap, event[0], time, validators)
+			eventTime = ((event[1] * (endTime - startTime)) + startTime)
+			interpolatedTracks = self._interpolateTrack(previousTracks, currentTracks, eventTime, event[1])
+			filteredTracks = {(tTime, tId): interpolatedTracks[(tTime, tId)] for (tTime, tId) in interpolatedTracks if tTime == eventTime}
+			graph = ConnectivityGraph(envMap, event[0], filteredTracks, eventTime, validators)
 			graphs.append(graph)
 		return graphs
 
@@ -352,7 +379,9 @@ class ShadowTree(nx.DiGraph):
 			# Add temporal edges between fovs
 			for fovNode in previousGraph.fovNodes:
 				fovNodeInShadowTree = self._generateTemporalName(fovNode, previousGraph.time)
+				if fovNodeInShadowTree not in self.nodes: continue
 				fovNodeInCurrentGraph = self._generateTemporalName(fovNode, graph.time)
+				if fovNodeInCurrentGraph not in self.nodes: continue
 				self._addEdge(fovNodeInShadowTree, fovNodeInCurrentGraph, isTemporal=True)
 			# Add temporal edges between symbols
 			for symNode in previousGraph.symbolNodes:
@@ -384,17 +413,19 @@ class ShadowTree(nx.DiGraph):
 		self.graphs.append(graph)
 		return
 
-	def _build(self, envMap: Map, fovs: List[Fov], validators: Dict[str, Validator], startInd = 0, endInd = None):
+	def _build(self, envMap: Map, fovs: List[Fov], validators: Dict[str, Validator], tracks: Tracks, startInd = 0, endInd = None):
 		if endInd is None: endInd = len(fovs)
 
 		previousFov: Fov = None
 		currentConnectivityG: ConnectivityGraph = None
 		startTime = time.time()
+		previousTracks = None
 
 		for i in range(startInd, endInd):
 			currentFov = fovs[i]
+			filteredTracks = {(tTime, tId): tracks[(tTime, tId)] for (tTime, tId) in tracks if tTime == currentFov.time}
 			if previousFov is None:
-				currentConnectivityG = ConnectivityGraph(envMap, currentFov.polygon, currentFov.time, validators)
+				currentConnectivityG = ConnectivityGraph(envMap, currentFov.polygon, filteredTracks, currentFov.time, validators)
 				self._appendGraph(currentConnectivityG)
 				previousFov = currentFov
 			else:
@@ -404,9 +435,10 @@ class ShadowTree(nx.DiGraph):
 					centerOfRotation = (previousSensor.pose.x, previousSensor.pose.y)
 					componentEvents = self._findIntermediateComponentEvents(previousSensor.region, currentSensor.region, centerOfRotation, envMap)
 					self.componentEvents.append(componentEvents)
-					graphs = self._appendConnectivityGraphPerEvent(envMap, componentEvents, validators, previousFov.time, currentFov.time)
+					graphs = self._appendConnectivityGraphPerEvent(envMap, componentEvents, previousTracks, filteredTracks, validators, previousFov.time, currentFov.time)
 					self._addTemporalEdges(graphs, centerOfRotation)
 				previousFov = currentFov
+			previousTracks = filteredTracks
 		print("took %.2fms" % (time.time() - startTime))
 		return
 

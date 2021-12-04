@@ -86,9 +86,8 @@ class NFA(nx.DiGraph):
 		if len(observations.getObservationByIndex(0).fov.sensors) == 0:
 			print("Don't know how to handle no sensor yet")
 			return
-
 		fovs = [observations[o].fov for o in observations]
-		shadowTree = ShadowTree(envMap, fovs, self.validators)
+		shadowTree = ShadowTree(envMap, fovs, self.validators, observations.tracks)
 		# TODO: test with a trajectory
 		for s in shadowTree.graphs[0].shadowNodes:
 			self.activeStates.add(Penny(self.START_SYMBOL, [shadowTree._generateTemporalName(s, shadowTree.graphs[0].time)]))

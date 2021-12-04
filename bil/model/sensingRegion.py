@@ -1,5 +1,6 @@
 from shapely.geometry import Polygon
 from bil.model.polygonalRegion import PolygonalRegion
+from bil.observation.track import Tracks
 from bil.utils.geometry import Geometry
 
 COLOR_PALETTE = ["Green", "Purple", "Gold"]
@@ -10,13 +11,27 @@ class SensingRegion(PolygonalRegion):
 	coords will be used to create the polygon.
 	If polygon is given, coords arg will be ignored.
 	"""
-	def __init__(self, name: str, coords: Geometry.CoordsList, timestamp: float, idNum: int, polygon: Polygon = None):
+	def __init__(self, name: str, coords: Geometry.CoordsList, timestamp: float, idNum: int, polygon: Polygon = None, tracks: Tracks = {}):
 		super().__init__(name, coords, COLOR_PALETTE[idNum % NUM_COLORS], polygon=polygon)
-		self.timestamp = timestamp
+		self.time = timestamp
+		self.tracks = tracks
 		self._renderLineWidth = 4
 
-	def isBeam(self, l):
-		return Geometry.lineAndPolygonIntersect(l, self.polygon)
+	def __repr__(self):
+		return "%s-%.2f" % (super().__repr__(), self.time)
+
+	@property
+	def containsTracks(self) -> bool:
+		return len(self.tracks) > 0
 
 	def render(self, canvas):
 		super().render(canvas, False)
+		for trackId in self.tracks:
+			track = self.tracks[trackId]
+			track.render(canvas)
+
+	def clearRender(self, canvas):
+		for trackId in self.tracks:
+			track = self.tracks[trackId]
+			track.clearRender(canvas)
+		return super().clearRender(canvas)
