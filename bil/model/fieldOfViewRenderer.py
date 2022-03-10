@@ -31,8 +31,9 @@ class FieldOfViewRenderer:
 		for fov in self._previousCGraph.fovNodes:
 			fovNodeData = self._previousCGraph.nodes[fov]
 			fovNodeData["region"].clearRender(canvas)
-			for trackId in fovNodeData["tracks"]:
-				fovNodeData["tracks"][trackId].clearRender(canvas)
+			if "tracks" in fovNodeData:
+				for trackId in fovNodeData["tracks"]:
+					fovNodeData["tracks"][trackId].clearRender(canvas)
 		for shadowName in self._previousCGraph.shadowNodes:
 			shadowRegion = self._previousCGraph.nodes[shadowName]["region"]
 			shadowRegion.clearRender(canvas)

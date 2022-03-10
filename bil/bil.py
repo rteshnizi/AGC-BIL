@@ -11,8 +11,8 @@ class Bil(object):
 		self.loadFromFile = loadFromFile
 		# self.dataPrototype = "TemporalEdgeTest-1"
 		# self.dataPrototype = "TemporalEdgeTest-2"
-		# self.dataPrototype = "TwistTest-NoTraj"
-		self.dataPrototype = "TwistTest-Traj1"
+		self.dataPrototype = "TwistTest-NoTraj"
+		# self.dataPrototype = "TwistTest-Traj1"
 		# self.dataPrototype = "Prototype-1"
 		# self.dataPrototype = "Prototype-2"
 		# self.dataPrototype = "MovingSensor-0"
