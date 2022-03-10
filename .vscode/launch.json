@@ -46,10 +46,10 @@
 			"request": "launch",
 			"console": "integratedTerminal",
 			"windows": {
-				"program": "${workspaceFolder}\\bil\\tests\\cgalTest.py",
+				"program": "${workspaceFolder}\\bil\\tests\\shapelyTest.py",
 			},
 			"linux": {
-				"program": "${workspaceFolder}/bil/tests/cgalTest.py",
+				"program": "${workspaceFolder}/bil/tests/shapelyTest.py",
 			},
 		}
 	]
