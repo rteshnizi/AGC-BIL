@@ -289,19 +289,18 @@ class ShadowTree(nx.DiGraph):
 		haveOverlap = intervals + outgoingIntervals
 		dontHaveOverlap = []
 		eventCandidates = []
-		while len(haveOverlap) > 0:
-			i = 0
-			while i < len(haveOverlap):
-				(sensorEdge, mapEdge, intervalStart, intervalEnd) = haveOverlap.pop(i)
-				intervalMid = (intervalStart + intervalEnd) / 2
-				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalStart, intervalMid)
-				if collsionCheckResults[0] != collsionCheckResults[1]:
-					haveOverlap.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
-					i += 1
-				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalMid, intervalEnd)
-				if collsionCheckResults[0] != collsionCheckResults[1]:
-					haveOverlap.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
-					i += 1
+		i = 0
+		while len(haveOverlap) > 0 and i < len(haveOverlap):
+			(sensorEdge, mapEdge, intervalStart, intervalEnd) = haveOverlap.pop(i)
+			intervalMid = (intervalStart + intervalEnd) / 2
+			collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalStart, intervalMid)
+			if collsionCheckResults[0] != collsionCheckResults[1]:
+				haveOverlap.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+				i += 1
+			collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalMid, intervalEnd)
+			if collsionCheckResults[0] != collsionCheckResults[1]:
+				haveOverlap.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
+				i += 1
 			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
 			for interval in dontHaveOverlap:
 				intermediateTransform = Geometry.getParameterizedAffineTransformation(transformation, interval[3])
@@ -310,19 +309,18 @@ class ShadowTree(nx.DiGraph):
 		intervals = self._initEdgeIntervals(currentSensor, transformation, centerOfRotation, currentCollidingEdges, inverse=True)
 		haveOverlap = intervals + ingoingIntervals
 		dontHaveOverlap = []
-		while len(haveOverlap) > 0:
-			i = 0
-			while i < len(haveOverlap):
-				(sensorEdge, mapEdge, intervalStart, intervalEnd) = haveOverlap.pop(i)
-				intervalMid = (intervalStart + intervalEnd) / 2
-				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalStart, intervalMid)
-				if collsionCheckResults[0] != collsionCheckResults[1]:
-					haveOverlap.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
-					i += 1
-				collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalMid, intervalEnd)
-				if collsionCheckResults[0] != collsionCheckResults[1]:
-					haveOverlap.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
-					i += 1
+		i = 0
+		while len(haveOverlap) > 0 and i < len(haveOverlap):
+			(sensorEdge, mapEdge, intervalStart, intervalEnd) = haveOverlap.pop(i)
+			intervalMid = (intervalStart + intervalEnd) / 2
+			collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalStart, intervalMid)
+			if collsionCheckResults[0] != collsionCheckResults[1]:
+				haveOverlap.insert(i, (sensorEdge, mapEdge, intervalStart, intervalMid))
+				i += 1
+			collsionCheckResults = self._checkEdgeIntervalForCollision(sensorEdge, mapEdge, transformation, centerOfRotation, intervalMid, intervalEnd)
+			if collsionCheckResults[0] != collsionCheckResults[1]:
+				haveOverlap.insert(i, (sensorEdge, mapEdge, intervalMid, intervalEnd))
+				i += 1
 			(haveOverlap, dontHaveOverlap) = self._splitIntervalsListForOverlap(haveOverlap)
 			for interval in dontHaveOverlap:
 				intermediateTransform = Geometry.getParameterizedAffineTransformation(transformation, interval[3])
